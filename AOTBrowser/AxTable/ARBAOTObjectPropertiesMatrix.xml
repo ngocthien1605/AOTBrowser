@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTObjectPropertiesMatrix</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// ACM AOT object properties table
+/// </summary>
+public class ARBAOTObjectPropertiesMatrix extends common
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>find</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Finds the object properties matrix record based on the name
+    /// </summary>
+    /// <param name = "_buffer">The table buffer to select into</param>
+    /// <param name = "_typeName">The type name to search for</param>
+    /// <param name = "_forUpdate">True if record should be selected for update</param>
+    /// <returns>The object properties record</returns>
+    public static ARBAOTObjectPropertiesMatrix find(ARBAOTObjectPropertiesMatrix _buffer, ARBAOTPropertyValue _typeName, boolean _forUpdate = false)
+    {
+        if (_forUpdate)
+        {
+            _buffer.selectForUpdate(_forUpdate);
+        }
+
+        select firstonly _buffer
+            where _buffer.TypeName == _typeName;
+
+        return _buffer;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:AOTObjectPropertiesDevDoc</DeveloperDocumentation>
+	<Label>@AOTBrowser:AOTObjectProperties</Label>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>TypeName</TitleField1>
+	<ClusteredIndex>NameIdx</ClusteredIndex>
+	<PrimaryIndex>NameIdx</PrimaryIndex>
+	<ReplacementKey>NameIdx</ReplacementKey>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<TableType>InMemory</TableType>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>TypeName</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields />
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>TypeName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTPropertyValue</ExtendedDataType>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Property</Name>
+			<ExtendedDataType>ARBAOTProperties</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>Modified</Name>
+			<Label>@SYS27395</Label>
+			<EnumType>NoYes</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>PropertyModified</Name>
+			<ExtendedDataType>ARBAOTPropertyModified</ExtendedDataType>
+			<EnumType>NoYes</EnumType>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>NameIdx</Name>
+			<AlternateKey>Yes</AlternateKey>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>TypeName</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

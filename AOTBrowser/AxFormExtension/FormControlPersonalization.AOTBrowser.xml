@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxFormExtension xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="Microsoft.Dynamics.AX.Metadata.V6">
+	<Name>FormControlPersonalization.AOTBrowser</Name>
+	<ControlModifications />
+	<Controls>
+		<AxFormExtensionControl xmlns="">
+			<Name>FormExtensionControl3xskwkxk1</Name>
+			<FormControl xmlns=""
+				i:type="AxFormTabPageControl">
+				<Name>ARBAOTBrowserTab</Name>
+				<Pattern>Custom</Pattern>
+				<Type>TabPage</Type>
+				<FormControlExtension
+					i:nil="true" />
+				<Controls>
+					<AxFormControl xmlns=""
+						i:type="AxFormButtonGroupControl">
+						<Name>ARBAOTBrowserButtonGroup</Name>
+						<Type>ButtonGroup</Type>
+						<WidthMode>SizeToAvailable</WidthMode>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormMenuFunctionButtonControl">
+								<Name>ARBAOTBrowser</Name>
+								<Type>MenuFunctionButton</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<MenuItemName>ARBAOTBrowser</MenuItemName>
+								<Text>@AOTBrowser:OpenInAOTBrowser</Text>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormMenuFunctionButtonControl">
+								<Name>ARBEntityFields</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>MenuFunctionButton</Type>
+								<Visible>No</Visible>
+								<FormControlExtension
+									i:nil="true" />
+								<MenuItemName>ARBEntityFields</MenuItemName>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormMenuFunctionButtonControl">
+								<Name>ARBMenuItemReferences</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>MenuFunctionButton</Type>
+								<Visible>No</Visible>
+								<FormControlExtension
+									i:nil="true" />
+								<MenuItemName>ARBMenuItemReferences</MenuItemName>
+							</AxFormControl>
+						</Controls>
+						<ArrangeMethod>Vertical</ArrangeMethod>
+					</AxFormControl>
+				</Controls>
+				<Caption>@AOTBrowser:AOTBrowser</Caption>
+			</FormControl>
+			<Parent>TabContent</Parent>
+		</AxFormExtensionControl>
+	</Controls>
+	<DataSourceModifications />
+	<DataSourceReferences />
+	<DataSources />
+	<Parts />
+	<PropertyModifications />
+</AxFormExtension>

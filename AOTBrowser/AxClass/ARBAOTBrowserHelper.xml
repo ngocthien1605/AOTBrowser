@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTBrowserHelper</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+using Microsoft.Dynamics.AX.Metadata.Core.MetaModel;
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using ArbelaXpp = Arbela.Dynamics.Ax.Xpp;
+
+/// <summary>
+/// Static utility class providing helper methods for the AOT Browser, including resolving
+/// object IDs, form and view data source table names, and SQL table names.
+/// </summary>
+public final class ARBAOTBrowserHelper
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>getObjectIdByName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the numeric object ID for a metadata object by looking up its name.
+    /// Handles tables, views, data entities, enums, classes, EDTs, and configuration keys.
+    /// </summary>
+    /// <param name="_object">The metadata object (e.g. AxTable, AxEnum).</param>
+    /// <returns>The integer object ID, or 0 if not found.</returns>
+    public static int getObjectIdByName(anytype _object)
+    {
+        INamedObject namedObject = _object as INamedObject;
+        if (namedObject == null)
+        {
+            return 0;
+        }
+        str objectName = namedObject.Name;
+        int objectId;
+
+        switch (true)
+        {
+            case _object is AxTable:
+            case _object is AxView:
+            case _object is AxDataEntityView:
+                objectId = tableName2Id(objectName);
+                break;
+
+            case _object is AxEnum:
+                objectId = enumName2Id(objectName);
+                break;
+
+            case _object is AxClass:
+                objectId = className2Id(objectName);
+                break;
+
+            case _object is AxEdt:
+                objectId = extendedTypeName2Id(objectName);
+                break;
+
+            case _object is AxConfigurationKey:
+                objectId = configurationKeyName2Id(objectName);
+                break;
+        }
+
+        return objectId;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getFormDatasourceTableName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves the underlying table name for a named data source on a form.
+    /// Checks the base form and then any form extensions.
+    /// </summary>
+    /// <param name="_formName">The form name.</param>
+    /// <param name="_datasourceName">The data source name.</param>
+    /// <returns>The table name.</returns>
+    public static TableName getFormDatasourceTableName(str _formName, str _datasourceName)
+    {
+        str tableName;
+        AxForm currentForm = Xpp.MetadataSupport::GetForm(_formName);
+        tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, currentForm.DataSources);
+        if (!tableName)
+        {
+            var formExtensionsEnum = ArbelaXpp.MetadataSupport::GetFormExtensionsForForm(_formName).GetEnumerator();
+            while (!tableName && formExtensionsEnum.MoveNext())
+            {
+                AxFormExtension formExtension = formExtensionsEnum.Current;
+                if (!CLRInterop::isNull(formExtension.DataSources))
+                {
+                    tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formExtension.DataSources);
+                }
+            }
+        }
+
+        return tableName;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getViewDatasourceTableName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves the underlying table name for a named data source on a view.
+    /// Checks query-based views and metadata-based views, including extensions.
+    /// </summary>
+    /// <param name="_viewName">The view name.</param>
+    /// <param name="_datasourceName">The data source name.</param>
+    /// <returns>The table name.</returns>
+    public static TableName getViewDatasourceTableName(str _viewName, str _datasourceName)
+    {
+        str tableName;
+        AxView currentView = Xpp.MetadataSupport::GetView(_viewName);
+        if (currentView.Query != null)
+        {
+            AxQuerySimple axQuery = Xpp.MetadataSupport::GetQuery(currentView.Query) as AxQuerySimple;
+            tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, axQuery.DataSources);
+            if (!tableName)
+            {
+                var queryExtensionsEnum = ArbelaXpp.MetadataSupport::GetQueryExtensionsForQuery(currentView.Query).GetEnumerator();
+                while (!tableName && queryExtensionsEnum.MoveNext())
+                {
+                    AxQuerySimpleExtension queryExtension = queryExtensionsEnum.Current;
+                    if (!CLRInterop::isNull(queryExtension.DataSources))
+                    {
+                        tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, queryExtension.DataSources);
+                    }
+                }
+            }
+        }
+        else
+        {
+            tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, currentView.ViewMetadata.DataSources);
+            if (!tableName)
+            {
+                var viewExtensionsEnum = ArbelaXpp.MetadataSupport::GetViewExtensionsForView(_viewName).GetEnumerator();
+                while (!tableName && viewExtensionsEnum.MoveNext())
+                {
+                    AxViewExtension viewExtension = viewExtensionsEnum.Current;
+                    if (!CLRInterop::isNull(viewExtension.DataSources))
+                    {
+                        tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, viewExtension.DataSources);
+                    }
+                }
+            }
+        }
+
+        return tableName;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getTableNameFromDatasource</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Recursively searches through data source collections to find a data source by name
+    /// and return its table. Handles form data sources (root, derived, referenced) and
+    /// query data sources.
+    /// </summary>
+    /// <param name="_datasourceName">The data source name to find.</param>
+    /// <param name="_datasources">The collection of data sources to search.</param>
+    /// <param name="_extensionDatasources">Optional extension data sources to search.</param>
+    /// <param name="_depth">Current recursion depth (guards against infinite loops).</param>
+    /// <returns>The table name, or empty string if not found.</returns>
+    public static TableName getTableNameFromDatasource(str _datasourceName, System.Collections.IEnumerable _datasources, System.Collections.IEnumerable _extensionDatasources = null, int _depth = 0)
+    {
+        const int maxDepth = 50;
+        if (_depth >= maxDepth)
+        {
+            return '';
+        }
+
+        System.Collections.IEnumerator datasourcesEnum;
+        if (!CLRInterop::isNull(_datasources))
+        {
+            datasourcesEnum = _datasources.GetEnumerator();
+            while (datasourcesEnum.MoveNext())
+            {
+                if (datasourcesEnum.Current is AxFormDataSourceRoot)
+                {
+                    AxFormDataSourceRoot formDataSourceRoot = datasourcesEnum.Current;
+                    if (formDataSourceRoot.Name == _datasourceName)
+                    {
+                        return formDataSourceRoot.Table;
+                    }
+                    else
+                    {
+                        TableName tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formDataSourceRoot.ReferencedDataSources, null, _depth + 1);
+                        if (tableName)
+                        {
+                            return tableName;
+                        }
+                        else
+                        {
+                            tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formDataSourceRoot.DerivedDataSources, null, _depth + 1);
+                            if (tableName)
+                            {
+                                return tableName;
+                            }
+                        }
+                    }
+                }
+                else if (datasourcesEnum.Current is AxFormDataSourceDerived)
+                {
+                    AxFormDataSourceDerived formDataSourceDerived = datasourcesEnum.Current;
+                    if (formDataSourceDerived.Name == _datasourceName)
+                    {
+                        return formDataSourceDerived.Table;
+                    }
+                    else
+                    {
+                        TableName tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formDataSourceDerived.ReferencedDataSources, null, _depth + 1);
+                        if (tableName)
+                        {
+                            return tableName;
+                        }
+                        else
+                        {
+                            tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formDataSourceDerived.DerivedDataSources, null, _depth + 1);
+                            if (tableName)
+                            {
+                                return tableName;
+                            }
+                        }
+                    }
+                }
+                else if (datasourcesEnum.Current is AxFormDataSourceReferenced)
+                {
+                    AxFormDataSourceReferenced formDataSourceReferenced = datasourcesEnum.Current;
+                    if (formDataSourceReferenced.Name == _datasourceName)
+                    {
+                        return formDataSourceReferenced.Table;
+                    }
+                    else
+                    {
+                        TableName tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, formDataSourceReferenced.ReferencedDataSources, null, _depth + 1);
+                        if (tableName)
+                        {
+                            return tableName;
+                        }
+                    }
+                }
+                else if (datasourcesEnum.Current is AxQuerySimpleDataSource)
+                {
+                    AxQuerySimpleDataSource datasource = datasourcesEnum.Current as AxQuerySimpleDataSource;
+                    if (datasource.Name == _datasourceName)
+                    {
+                        return datasource.Table;
+                    }
+                    else
+                    {
+                        TableName tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, datasource.DataSources, null, _depth + 1);
+                        if (tableName)
+                        {
+                            return tableName;
+                        }
+                        else
+                        {
+                            tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, datasource.DerivedDataSources, null, _depth + 1);
+                            if (tableName)
+                            {
+                                return tableName;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!CLRInterop::isNull(_extensionDatasources))
+        {
+            datasourcesEnum = _extensionDatasources.GetEnumerator();
+            while (datasourcesEnum.MoveNext())
+            {
+                AxQuerySimpleDataSource datasource = datasourcesEnum.Current as AxQuerySimpleDataSource;
+                if (datasource.Name == _datasourceName)
+                {
+                    return datasource.Table;
+                }
+                else
+                {
+                    TableName tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, datasource.DataSources, null, _depth + 1);
+                    if (tableName)
+                    {
+                        return tableName;
+                    }
+                    else
+                    {
+                        tableName = ARBAOTBrowserHelper::getTableNameFromDatasource(_datasourceName, datasource.DerivedDataSources, null, _depth + 1);
+                        if (tableName)
+                        {
+                            return tableName;
+                        }
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getTableSqlName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the physical SQL table name for a D365FO table.
+    /// Returns empty string for temp tables.
+    /// </summary>
+    /// <param name="_tableName">The AOT table name.</param>
+    /// <returns>The physical SQL table name.</returns>
+    public static str getTableSqlName(TableName _tableName)
+    {
+        Common tableBuffer = DictTable::createRecord(_tableName);
+
+        if (tableBuffer.isTempDb() || tableBuffer.isTmp())
+        {
+            return '';
+        }
+
+        return tableBuffer.getPhysicalTableName();
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

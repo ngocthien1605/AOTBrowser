@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBEntityFields</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+public class ARBEntityFields extends common
+{
+}
+]]></Declaration>
+		<Methods />
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:EntityFieldsDevDoc</DeveloperDocumentation>
+	<Label>@AOTBrowser:EntityFieldList</Label>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>EntityName</TitleField1>
+	<TitleField2>EntityFieldName</TitleField2>
+	<AllowRowVersionChangeTracking>Yes</AllowRowVersionChangeTracking>
+	<ClusteredIndex>EntityFieldIdx</ClusteredIndex>
+	<PrimaryIndex>EntityFieldIdx</PrimaryIndex>
+	<ReplacementKey>EntityFieldIdx</ReplacementKey>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>EntityName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityFieldName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>DatasourceTableName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>DatasourceFieldName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityLabel</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>EntityName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityFieldName</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>EntityName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityFieldName</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>EntityName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityFieldName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>EntityFieldLabel</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>DatasourceTableName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>DatasourceFieldName</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>EntityFieldName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>SysAotControlName</ExtendedDataType>
+			<Label>@AOTBrowser:EntityFieldName</Label>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>EntityFieldLabel</Name>
+			<ExtendedDataType>FieldLabel</ExtendedDataType>
+			<Label>@AOTBrowser:EntityFieldLabel</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>EntityName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>SysAotControlName</ExtendedDataType>
+			<Label>@AOTBrowser:EntityName</Label>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>DatasourceTableName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>SysAotControlName</ExtendedDataType>
+			<Label>@AOTBrowser:SourceTableName</Label>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>DatasourceFieldName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>SysAotControlName</ExtendedDataType>
+			<Label>@AOTBrowser:SourceTableField</Label>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>EntityLabel</Name>
+			<ExtendedDataType>Description</ExtendedDataType>
+			<Label>@AOTBrowser:EntityLabel</Label>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>EntityFieldIdx</Name>
+			<AlternateKey>Yes</AlternateKey>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>EntityName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>EntityFieldName</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+		<AxTableIndex>
+			<Name>SourceTableNameField</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>DatasourceTableName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>DatasourceFieldName</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

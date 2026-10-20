@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBMenuItemReferences</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+public class ARBMenuItemReferences extends common
+{
+}
+]]></Declaration>
+		<Methods />
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:MenuItemReferencesDevDoc</DeveloperDocumentation>
+	<FormRef>ARBMenuItemReferences</FormRef>
+	<Label>@AOTBrowser:MenuItemReferences</Label>
+	<ListPageRef>ARBMenuItemReferences</ListPageRef>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>MenuItemName</TitleField1>
+	<TitleField2>RefObjectName</TitleField2>
+	<AllowRowVersionChangeTracking>Yes</AllowRowVersionChangeTracking>
+	<ClusteredIndex>MenuItemRefIdx</ClusteredIndex>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemType</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefObjectName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefObjectType</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefObjectLabel</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefPath</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemType</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemType</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemType</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>MenuItemLabel</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefObjectName</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>RefObjectType</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>MenuItemName</Name>
+			<ExtendedDataType>MenuItemName</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>MenuItemType</Name>
+			<Label>@AOTBrowser:MenuItemType</Label>
+			<EnumType>MenuItemType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>RefObjectType</Name>
+			<Label>@AOTBrowser:ReferenceObjectType</Label>
+			<EnumType>ARBAOTObjectType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>RefObjectName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:ReferenceObjectName</Label>
+			<Mandatory>Yes</Mandatory>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>RefPath</Name>
+			<ExtendedDataType>ARBMenuItemReferencePath</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>RefObjectLabel</Name>
+			<ExtendedDataType>Description</ExtendedDataType>
+			<Label>@AOTBrowser:RefObjectLabel</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>MenuItemLabel</Name>
+			<ExtendedDataType>Description</ExtendedDataType>
+			<Label>@AOTBrowser:MenuItemLabel</Label>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>MenuItemRefIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>MenuItemName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>MenuItemType</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>RefObjectName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>RefPath</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBEntityFieldPopulateService</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using ArbelaXpp = Arbela.Dynamics.Ax.Xpp;
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+using System.Reflection;
+
+/// <summary>
+/// Service for generating parameter comparison setup data
+/// </summary>
+class ARBEntityFieldPopulateService extends SysOperationServiceBase
+{
+    ARBEntityFields entityFields;
+    RecordInsertList entityFieldsInsertList = new RecordInsertList(tableNum(ARBEntityFields));
+
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>populateEntityFields</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Generate the setup data needed for parameter comparison
+    /// </summary>
+    public void populateEntityFields()
+    {
+        ttsbegin;
+        delete_from entityFields;
+
+        var dataEntityList = Xpp.MetadataSupport::GetDataModelElements(false,false,true,false,false).GetEnumerator();
+
+        while (dataEntityList.MoveNext())
+        {
+            AxDataEntityView dataEntityView = Xpp.MetadataSupport::GetDataEntityView(dataEntityList.Current);
+            this.processFields(dataEntityView.Name, SysLabel::labelId2String2(dataEntityView.Label), dataEntityView.Fields, dataEntityView.ViewMetadata.DataSources);
+        }
+        entityFieldsInsertList.insertDatabase();
+        ttscommit;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processFields</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Processes the mapped fields of a data entity or view, resolving each field to its underlying table and field name and inserting the results.
+    /// </summary>
+    /// <param name = "_entityName">The name of the data entity.</param>
+    /// <param name = "_entityLabel">The display label of the data entity.</param>
+    /// <param name = "_fields">The collection of entity view fields to process.</param>
+    /// <param name = "_datasources">The collection of data sources defined on the entity or view.</param>
+    /// <param name = "_extensionDatasources">Optional collection of extension data sources; defaults to null.</param>
+    public void processFields(str _entityName, str _entityLabel, System.Collections.IEnumerable _fields, System.Collections.IEnumerable _datasources, System.Collections.IEnumerable _extensionDatasources = null)
+    {
+        var fieldEnum = _fields.GetEnumerator();
+        while (fieldEnum.MoveNext())
+        {
+            AxDataEntityViewField field = fieldEnum.Current;
+
+            AxDataEntityViewMappedField mappedField = field as AxDataEntityViewMappedField;
+            if (mappedField != null)
+            {
+                System.Type t = mappedField.GetType();
+                PropertyInfo labelProperty = t.GetProperty('Label');
+                entityFields.EntityFieldName = mappedField.Name;
+                entityFields.EntityFieldLabel = this.getLabelValue(labelProperty, mappedField);
+                [entityFields.DatasourceTableName, entityFields.DatasourceFieldName] = this.getTableNameFieldName(ARBAOTBrowserHelper::getTableNameFromDatasource(mappedField.Datasource, _dataSources), mappedField.DataField);
+                if (entityFields.EntityFieldLabel == '')
+                {
+                    AxTableField tableField = Xpp.MetadataSupport::GetTableField(entityFields.DatasourceTableName, entityFields.DatasourceFieldName);
+                    if (tableField != null)
+                    {
+                        entityFields.EntityFieldLabel = this.getLabelValue(tableField.GetType().GetProperty('Label'), tableField);
+                    }
+                    else
+                    {
+                        AxViewField viewField = Xpp.MetadataSupport::GetViewField(entityFields.DatasourceTableName, entityFields.DatasourceFieldName);
+                        if (viewField != null)
+                        {
+                            entityFields.EntityFieldLabel = this.getLabelValue(viewField.GetType().GetProperty('Label'), viewField);
+                        }
+                    }
+                }
+                entityFields.EntityName = _entityName;
+                entityFields.EntityLabel = _entityLabel;
+
+                entityFieldsInsertList.add(entityFields);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getTableNameFieldName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves a data source name and field name to the underlying table and field by delegating to the recursive depth-limited method.
+    /// </summary>
+    /// <param name = "_datasourceName">The data source or table name to resolve.</param>
+    /// <param name = "_fieldName">The field name to resolve.</param>
+    /// <returns>A container with the resolved table name and field name.</returns>
+    public container getTableNameFieldName(str _datasourceName, str _fieldName)
+    {
+        return this.getTableNameFieldNameWithDepth(_datasourceName, _fieldName, 0);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getTableNameFieldNameWithDepth</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Recursively resolves a data source and field name through nested data entities and views until the physical table and field are found, up to a maximum depth.
+    /// </summary>
+    /// <param name = "_datasourceName">The current data source or table name to resolve.</param>
+    /// <param name = "_fieldName">The field name to resolve.</param>
+    /// <param name = "_depth">The current recursion depth to guard against infinite loops.</param>
+    /// <returns>A container with the resolved table name and field name.</returns>
+    private container getTableNameFieldNameWithDepth(str _datasourceName, str _fieldName, int _depth)
+    {
+        const int maxDepth = 20;
+        if (_depth >= maxDepth)
+        {
+            return [_datasourceName, _fieldName];
+        }
+
+        AxDataEntityView dataEntity = Xpp.MetadataSupport::GetDataEntityView(_datasourceName);
+        if (dataEntity != null)
+        {
+            var fieldEnum = dataEntity.Fields.GetEnumerator();
+            while (fieldEnum.MoveNext())
+            {
+                AxDataEntityViewField field = fieldEnum.Current;
+                if (field.Name == _fieldName)
+                {
+                    AxDataEntityViewMappedField mappedField = field as AxDataEntityViewMappedField;
+                    if (mappedField != null)
+                    {
+                        return this.getTableNameFieldNameWithDepth(ARBAOTBrowserHelper::getTableNameFromDatasource(mappedField.Datasource, dataEntity.ViewMetadata.DataSources), mappedField.DataField, _depth + 1);
+                    }
+                    break;
+                }
+            }
+        }
+
+        AxView view = Xpp.MetadataSupport::GetView(_datasourceName);
+        if (view != null)
+        {
+            var viewFieldEnum = view.Fields.GetEnumerator();
+            while (viewFieldEnum.MoveNext())
+            {
+                AxViewField field = viewFieldEnum.Current;
+                if (field.Name == _fieldName)
+                {
+                    AxViewFieldBound boundField = field as AxViewFieldBound;
+                    if (boundField != null)
+                    {
+                        return this.getTableNameFieldNameWithDepth(ARBAOTBrowserHelper::getTableNameFromDatasource(boundField.DataSource, view.ViewMetadata.DataSources), boundField.DataField, _depth + 1);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return [_datasourceName, _fieldName];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getLabelValue</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves the display text for a label property, falling back through extended data types and enum types when the direct label is empty.
+    /// </summary>
+    /// <param name = "_property">The reflection <c>PropertyInfo</c> for the label property to read.</param>
+    /// <param name = "_object">The metadata object to read the label from.</param>
+    /// <returns>The resolved label text, or an empty string if no label is found.</returns>
+    protected str getLabelValue(PropertyInfo _property, anytype _object)
+    {
+        str value = SysLabel::labelId2String(_property.GetValue(_object).ToString());
+
+        if (value == '')
+        {
+            if (_object is AxEdt && (_object as AxEdt).Extends != '')
+            {
+                AxEdt edt = _object as AxEdt;
+                AxEdt extendsEdt = Xpp.MetadataSupport::GetEdt(edt.Extends);
+                if (extendsEdt != null)
+                {
+                    value = this.getLabelValue(extendsEdt.GetType().GetProperty(_property.Name), extendsEdt);
+                }
+            }
+            else
+            {
+                System.Type t = _object.GetType();
+                PropertyInfo edtProp = t.GetProperty(ARBAOTBrowserConstants::ExtendedDataType);
+                if (edtProp != null && edtProp.GetValue(_object) != null && edtProp.GetValue(_object).ToString() != '')
+                {
+                    str edtName = edtProp.GetValue(_object).ToString();
+                    if (edtName != '')
+                    {
+                        AxEdt edt = Xpp.MetadataSupport::GetEdt(edtName);
+                        if (edt != null)
+                        {
+                            value = this.getLabelValue(edt.GetType().GetProperty(_property.Name), edt);
+                        }
+                    }
+                }
+                else
+                {
+                    PropertyInfo enumProp = t.GetProperty(ARBAOTBrowserConstants::EnumType);
+                    if (enumProp != null && enumProp.GetValue(_object) != null && enumProp.GetValue(_object).ToString() != '')
+                    {
+                        str enumName = enumProp.GetValue(_object).ToString();
+                        if (enumName != '')
+                        {
+                            AxEnum enum = Xpp.MetadataSupport::GetEnum(enumName);
+                            if (enum != null)
+                            {
+                                value = this.getLabelValue(enum.GetType().GetProperty(_property.Name), enum);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

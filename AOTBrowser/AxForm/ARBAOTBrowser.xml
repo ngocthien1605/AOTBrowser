@@ -1,0 +1,2581 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxForm xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="Microsoft.Dynamics.AX.Metadata.V6">
+	<Name>ARBAOTBrowser</Name>
+	<SourceCode>
+		<Methods xmlns="">
+			<Method>
+				<Name>classDeclaration</Name>
+				<Source><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using ArbelaXpp = Arbela.Dynamics.Ax.Xpp;
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+using System.Reflection;
+using System.Linq.Enumerable;
+
+/// <summary>
+/// Main AOT Browser form providing a tree-based metadata explorer for D365FO objects.
+/// Allows browsing tables, classes, forms, EDTs, enums, and other AOT elements with
+/// property inspection, code viewing, and extension visualization.
+/// </summary>
+[Form]
+public class ARBAOTBrowser extends FormRun
+{
+    const str PropertiesMatrixGridName = 'PropertiesMatrixGrid';
+    FormGridControl propertiesMatrixGrid;
+    boolean extensionsInline;
+    Map matrixControlMap;
+    boolean showCode;
+    ARBAOTObjectTree aotObjectTree;
+    str entityFieldName;
+    str selectedTreePath;
+    ARBAOTObjectType currentObjectType;
+    TreeNodeName currentObjectName;
+    anytype selectedObject;
+    int maxPropertyIndex;
+
+    // Tree search state (Docentric pattern - pre-built index lists)
+    List searchNextTreeItems;
+    List searchPrevTreeItems;
+
+    #define.CurrentVersion(2)
+    #localmacro.CurrentList
+        extensionsInline,
+        showCode
+    #endmacro
+
+}
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastValueUserId</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the current user ID for SysLastValue state persistence.
+    /// </summary>
+    /// <returns>The current user ID.</returns>
+    private UserId lastValueUserId()
+    {
+        return curUserId();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastValueType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the element type identifier for SysLastValue state persistence.
+    /// </summary>
+    /// <returns>The <c>UtilElementType::Form</c> element type.</returns>
+    private UtilElementType lastValueType()
+    {
+        return UtilElementType::Form;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastValueElementName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the element name for SysLastValue state persistence.
+    /// </summary>
+    /// <returns>The name of this form.</returns>
+    private IdentifierName lastValueElementName()
+    {
+        return this.name();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastValueDesignName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the design name for SysLastValue state persistence.
+    /// </summary>
+    /// <returns>An empty string, as this form does not use multiple design variants.</returns>
+    private IdentifierName lastValueDesignName()
+    {
+        // Unique key: (user, company, type, elementName, designName)
+        // We don't have such a need to save different sets of the form data.
+        return '';
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastValueDataAreaId</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the data area (company) ID for SysLastValue state persistence.
+    /// </summary>
+    /// <returns>The current company data area ID.</returns>
+    DataAreaId lastValueDataAreaId()
+    {
+        return curext();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>initParmDefault</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Initializes default parameter values for SysLastValue when no saved state exists.
+    /// </summary>
+    void initParmDefault()
+    {
+        // Don't need to initialize any of the controls.
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>pack</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Packs the form state into a container for SysLastValue persistence.
+    /// </summary>
+    /// <returns>A container with the current version and persisted control values.</returns>
+    public container pack()
+    {
+        this.getControlValuesForSysLastValues();
+        return [#CurrentVersion, #CurrentList];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>unpack</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Unpacks form state from a container saved by SysLastValue, with version migration support.
+    /// </summary>
+    /// <param name="packedClass">The container with previously packed form state.</param>
+    /// <returns>true if the container was successfully unpacked; otherwise, false.</returns>
+    public boolean unpack(container packedClass)
+    {
+        Integer version = conPeek(packedClass, 1);
+        switch (version)
+        {
+            case #CurrentVersion:
+                [version, #CurrentList] = packedClass;
+                break;
+            case 1:
+                [version, extensionsInline] = packedClass;
+                showCode = true;
+                break;
+            default:
+                return false;
+        }
+        return true;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>close</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Handles the form close event by saving the current state via SysLastValue before closing.
+    /// </summary>
+    public void close()
+    {
+        xSysLastValue::saveLast(this);
+        super();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getControlValuesForSysLastValues</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Captures the current form control values into member variables for SysLastValue persistence.
+    /// </summary>
+    void getControlValuesForSysLastValues()
+    {
+        extensionsInline = ExtensionViewToggle.toggleValue();
+        showCode = ViewCodeToggle.toggleValue();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>setControlValuesFromSysLastValues</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Restores form control values from the SysLastValue member variables after state is unpacked.
+    /// </summary>
+    void setControlValuesFromSysLastValues()
+    {
+        ExtensionViewToggle.toggleValue(extensionsInline);
+        ViewCodeToggle.toggleValue(showCode);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>updateControlsFromTable</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Updates form controls based on the currently selected record in the AOT objects data source.
+    /// </summary>
+    public void updateControlsFromTable()
+    {
+        this.updateControls(ARBAOTObjects.Type, ARBAOTObjects.Name);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>buildSearchTreeItems</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Builds the search index lists by walking the tree in depth-first order.
+    /// searchNextTreeItems contains indices in ascending (DFS) order for Find Next.
+    /// searchPrevTreeItems contains indices in descending order for Find Previous.
+    /// Call this after the tree is rebuilt.
+    /// </summary>
+    private void buildSearchTreeItems()
+    {
+        searchNextTreeItems = new List(Types::Integer);
+        searchPrevTreeItems = new List(Types::Integer);
+
+        TreeItemIdx rootIdx = ObjectTree.getRoot();
+        if (rootIdx != 0)
+        {
+            this.buildSearchTreeItemsRecursive(rootIdx);
+        }
+    }
+]]></Source>
+			</Method>
+			<Method>
+				<Name>buildSearchTreeItemsRecursive</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Recursively walks the tree adding each node's index to the search lists.
+    /// </summary>
+    /// <param name="_idx">The tree item index to process.</param>
+    private void buildSearchTreeItemsRecursive(TreeItemIdx _idx)
+    {
+        FormTreeItem item = ObjectTree.getItem(_idx);
+        if (item)
+        {
+            searchNextTreeItems.addEnd(_idx);
+            searchPrevTreeItems.addStart(_idx);
+        }
+
+        TreeItemIdx childIdx = ObjectTree.getChild(_idx);
+        while (childIdx != 0)
+        {
+            this.buildSearchTreeItemsRecursive(childIdx);
+            childIdx = ObjectTree.getNextSibling(childIdx);
+        }
+    }
+]]></Source>
+			</Method>
+			<Method>
+				<Name>findTreeItem</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Searches the tree for the next or previous item matching the search string.
+    /// Iterates through a pre-built ordered list of tree indices, skipping past
+    /// the currently selected node, and returns the first matching node.
+    /// Plain text does case-insensitive substring matching. Use * and ? for wildcards.
+    /// </summary>
+    /// <param name="_searchTreeItems">The ordered list of tree item indices to search through.</param>
+    /// <param name="_searchString">The search string (supports * and ? wildcards).</param>
+    /// <returns>The index of the matching tree item, or 0 if not found.</returns>
+    public TreeItemIdx findTreeItem(List _searchTreeItems, str _searchString)
+    {
+        TreeItemIdx foundItemIdx;
+        TreeItemIdx currentSelection = ObjectTree.getSelection();
+
+        boolean useWildcard = strContains(_searchString, '*') || strContains(_searchString, '?');
+        str searchLower = strLwr(_searchString);
+
+        ListEnumerator searchEnum = _searchTreeItems.getEnumerator();
+        boolean passedCurrent = (currentSelection == 0);
+
+        while (searchEnum.moveNext())
+        {
+            TreeItemIdx treeItemIdx = searchEnum.current();
+
+            if (!passedCurrent)
+            {
+                if (treeItemIdx == currentSelection)
+                {
+                    passedCurrent = true;
+                }
+                continue;
+            }
+
+            FormTreeItem item = ObjectTree.getItem(treeItemIdx);
+            if (item)
+            {
+                boolean isMatch;
+                if (useWildcard)
+                {
+                    isMatch = match(_searchString, item.text());
+                }
+                else
+                {
+                    isMatch = strContains(strLwr(item.text()), searchLower);
+                }
+
+                if (isMatch)
+                {
+                    foundItemIdx = treeItemIdx;
+                    break;
+                }
+            }
+        }
+
+        return foundItemIdx;
+    }
+]]></Source>
+			</Method>
+			<Method>
+				<Name>updateControls</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Refreshes the object tree, properties grid, and detail controls for the specified AOT object.
+    /// Handles special cases for resources, tables, views, menu items, forms, and data entities.
+    /// </summary>
+    /// <param name="_objectType">The AOT object type to display.</param>
+    /// <param name="_aotNodeName">The AOT node name of the object to display.</param>
+    public void updateControls(ARBAOTObjectType _objectType, TreeNodeName _aotNodeName)
+    {
+        currentObjectType = _objectType;
+        currentObjectName = _aotNodeName;
+
+        ResourceImageGroup.visible(false);
+
+        boolean tableBrowserEnabled = false;
+        boolean menuItemRefEnabled = false;
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Resource:
+                ResourceImage.normalImage(_aotNodeName);
+                ResourceImageGroup.visible(true);
+                break;
+            case ARBAOTObjectType::Table:
+            case ARBAOTObjectType::View:
+                tableBrowserEnabled = true;
+                break;
+            case ARBAOTObjectType::MenuItemAction:
+            case ARBAOTObjectType::MenuItemDisplay:
+            case ARBAOTObjectType::MenuItemOutput:
+                menuItemRefEnabled = true;
+                break;
+        }
+
+        aotObjectTree = ARBAOTObjectTree::newFromAOTObject(ObjectTree, _objectType, ExtensionViewToggle.toggleValue());
+        if (element.args() && element.args().parmObject() != null
+            && aotObjectTree is ARBAOTObjectTreeForm)
+        {
+            ARBAOTObjectTreeForm objectTreeForm = aotObjectTree as ARBAOTObjectTreeForm;
+            FormControl selectedControl = element.args().parmObject() as FormControl;
+            if (selectedControl)
+            {
+                objectTreeForm.parmSelectedControl(selectedControl.name());
+            }
+        }
+        else if (element.args() && element.args().parmObject() != null
+                && element.args().parmObject() is FormStringControl)
+        {
+            FormStringControl stringControl = element.args().parmObject() as FormStringControl;
+            if (stringControl)
+            {
+                aotObjectTree.parmSelectedTreePath('Fields/' + stringControl.valueStr());
+            }
+        }
+        else if (entityFieldName != ''
+            && aotObjectTree is ARBAOTObjectTreeDataEntity)
+        {
+            ARBAOTObjectTreeDataEntity objectTreeDataEntity = aotObjectTree as ARBAOTObjectTreeDataEntity;
+            objectTreeDataEntity.parmSelectedField(entityFieldName);
+        }
+        else if (selectedTreePath != '')
+        {
+            aotObjectTree.parmSelectedTreePath(selectedTreePath);
+        }
+        aotObjectTree.update(_aotNodeName);
+        this.buildSearchTreeItems();
+        DetailsTab.caption(_aotNodeName + ' - ' + enum2Str(_objectType));
+        ARBOpenTableBrowser.enabled(tableBrowserEnabled);
+        ARBMenuItemReferences.enabled(menuItemRefEnabled);
+        CopyLinkButton.enabled(currentObjectName != '');
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>clearPropertiesMatrix</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Clears the dynamic properties matrix grid and optionally recreates it for a new object.
+    /// </summary>
+    /// <param name="_recreate">If true, recreates the grid control for displaying collection-based properties.</param>
+    public void clearPropertiesMatrix(boolean _recreate = false)
+    {
+
+        if (propertiesMatrixGrid != null)
+        {
+            element.design().removeControl(propertiesMatrixGrid.id());
+        }
+
+        if (_recreate)
+        {
+            propertiesMatrixGrid = DetailsDetailsPropertiesGroup.addControl(FormControlType::Grid, PropertiesMatrixGridName);
+            propertiesMatrixGrid.dataSource(ARBAOTObjectPropertiesMatrix_ds.id());
+            propertiesMatrixGrid.widthMode(FormWidth::ColumnWidth);
+            propertiesMatrixGrid.heightMode(FormHeight::ColumnHeight);
+            propertiesMatrixGrid.visible(false);
+        }
+
+        // This is to make the table scroll correctly
+        DetailsTab.widthMode(FormWidth::ColumnWidth);
+        DetailsTab.heightMode(FormHeight::ColumnHeight);
+        DetailsBodyGroup.widthMode(FormWidth::ColumnWidth);
+        DetailsBodyGroup.heightMode(FormHeight::ColumnHeight);
+        DetailsDetailsGroup.widthMode(FormWidth::ColumnWidth);
+        DetailsDetailsGroup.heightMode(FormHeight::ColumnHeight);
+        DetailsDetailsPropertiesGroup.widthMode(FormWidth::ColumnWidth);
+        DetailsDetailsPropertiesGroup.heightMode(FormHeight::ColumnHeight);
+        PropertiesGrid.widthMode(FormWidth::ColumnWidth);
+        PropertiesGrid.heightMode(FormHeight::ColumnHeight);
+        matrixControlMap = new Map(Types::String, Types::Integer);
+        maxPropertyIndex = 0;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>updatePropertiesGroup</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Populates the properties grid or matrix with the metadata properties of the selected AOT object.
+    /// Handles single objects, collections, extensions, and extension modifications.
+    /// </summary>
+    /// <param name="_object">The metadata object (or collection/extension wrapper) whose properties to display.</param>
+    public void updatePropertiesGroup(anytype _object)
+    {
+        selectedObject = _object;
+        Map propMap = new Map(Types::String, Types::Integer);
+        int nextArrayNum = 1;
+        FormStringControl previousControl;
+        int currentTableId  = 0;
+
+        void addObjectToMatrix(anytype objectLocal, boolean setModified)
+        {
+            System.Type t = objectLocal.GetType();
+            PropertyInfo nameProp = t.GetProperty(ARBAOTBrowserConstants::Name);
+            str name;
+            if (nameProp != null)
+            {
+                name = nameProp.GetValue(objectLocal).ToString();
+            }
+            ARBAOTObjectPropertiesMatrix.clear();
+            ARBAOTObjectPropertiesMatrix.TypeName = name;
+
+            if (objectLocal is AxTableField)
+            {
+                if (!currentTableId)
+                {
+                    anytype parent = ObjectTree.getItem(ObjectTree.getRoot()).data();
+                    ARBObjectModification objectMod = parent as ARBObjectModification;
+                    if (objectMod)
+                    {
+                        parent = objectMod.Object;
+                    }
+                    AxTable table = parent as AxTable;
+                    currentTableId = tableName2Id(table.Name);
+                }
+                AxTableField tableField = objectLocal as AxTableField;
+                int arrayNum;
+                if (propMap.exists('_Id'))
+                {
+                    arrayNum = propMap.lookup('_Id');
+                }
+                if (arrayNum == 0)
+                {
+                    arrayNum = nextArrayNum;
+
+                    nextArrayNum++;
+                    propMap.insert('_Id', arrayNum);
+                    previousControl = propertiesMatrixGrid.addDataField(ARBAOTObjectPropertiesMatrix_ds.id(), fieldNum(ARBAOTObjectPropertiesMatrix, Property), previousControl, arrayNum);
+                    matrixControlMap.insert(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, Property), arrayNum), previousControl.id());
+                    previousControl.label('_Id');
+                }
+                ARBAOTObjectPropertiesMatrix.Property[arrayNum] = int2Str(fieldName2Id(currentTableId, tableField.Name));
+
+                arrayNum = 0;
+                if (propMap.exists('_Type'))
+                {
+                    arrayNum = propMap.lookup('_Type');
+                }
+                if (arrayNum == 0)
+                {
+                    arrayNum = nextArrayNum;
+
+                    nextArrayNum++;
+                    propMap.insert('_Type', arrayNum);
+                    previousControl = propertiesMatrixGrid.addDataField(ARBAOTObjectPropertiesMatrix_ds.id(), fieldNum(ARBAOTObjectPropertiesMatrix, Property), previousControl, arrayNum);
+                    matrixControlMap.insert(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, Property), arrayNum), previousControl.id());
+                    previousControl.label('_Type');
+                }
+                ARBAOTObjectPropertiesMatrix.Property[arrayNum] = this.getFieldType(tableField);
+            }
+
+            var props = t.GetProperties();
+            for (int i = 0; i < props.Length; i++)
+            {
+                PropertyInfo prop = props.GetValue(i);
+                System.Object propValue = prop.GetValue(objectLocal);
+                if (((propValue is System.String) ||
+                            (!(propValue is System.Collections.IEnumerable)
+                                && prop.PropertyType.Name != ARBAOTBrowserConstants::AxPropertyCollection
+                                && prop.PropertyType.Name != ARBAOTBrowserConstants::AxFormPropertyCollection))
+                            && prop.Name != ARBAOTBrowserConstants::CompilerMetadata
+                            && prop.Name != ARBAOTBrowserConstants::Design
+                            && prop.Name != ARBAOTBrowserConstants::FormControl)
+                {
+                    int arrayNum;
+                    if (propMap.exists(prop.Name))
+                    {
+                        arrayNum = propMap.lookup(prop.Name);
+                    }
+                    if (arrayNum == 0)
+                    {
+                        arrayNum = nextArrayNum;
+
+                        if (arrayNum > 100)
+                        {
+                            continue;
+                        }
+
+                        nextArrayNum++;
+                        propMap.insert(prop.Name, arrayNum);
+                        previousControl = propertiesMatrixGrid.addDataField(ARBAOTObjectPropertiesMatrix_ds.id(), fieldNum(ARBAOTObjectPropertiesMatrix, Property), previousControl, arrayNum);
+                        matrixControlMap.insert(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, Property), arrayNum), previousControl.id());
+                        previousControl.label(prop.Name);
+                    }
+
+                    if (prop.Name == ARBAOTBrowserConstants::Label
+                        || prop.Name == ARBAOTBrowserConstants::HelpText)
+                    {
+                        ARBAOTObjectPropertiesMatrix.Property[arrayNum] = this.getLabelValue(prop, objectLocal);
+                    }
+                    else
+                    {
+                        ARBAOTObjectPropertiesMatrix.Property[arrayNum] = this.getPropertyValue(prop, objectLocal);
+                    }
+                }
+            }
+            if (setModified)
+            {
+                ARBAOTObjectPropertiesMatrix.Modified = NoYes::Yes;
+            }
+            ARBAOTObjectPropertiesMatrix.insert();
+        }
+
+        CodeViewerGroup.visible(false);
+        CodeViewer.parmHtml('');
+        delete_from ARBAOTObjectProperties;
+        delete_from ARBAOTObjectPropertiesMatrix;
+        
+        if (!(typeOf(_object) == Types::String) && !(_object is System.String))
+        {
+            if (_object is System.Collections.IEnumerable
+                || _object is ARBObjectExtension)
+            {
+                element.clearPropertiesMatrix(true);
+                System.Collections.IEnumerable enumerable;
+                ARBObjectExtension objectExtension = _object as ARBObjectExtension;
+                if (objectExtension == null)
+                {
+                    enumerable = _object as System.Collections.IEnumerable;
+                }
+                else
+                {
+                    enumerable = objectExtension.Object as System.Collections.IEnumerable;
+                }
+                PropertiesGrid.visible(false);
+                System.Collections.IEnumerator enumerator = enumerable.GetEnumerator();
+                
+                
+                previousControl = propertiesMatrixGrid.addDataField(ARBAOTObjectPropertiesMatrix_ds.id(), fieldNum(ARBAOTObjectPropertiesMatrix, TypeName));
+                matrixControlMap.insert(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, TypeName), 0), previousControl.id());
+                while (enumerator.moveNext())
+                {
+                    addObjectToMatrix(enumerator.Current, false);
+                }
+
+                if (objectExtension != null)
+                {
+                    ListEnumerator extEnum = objectExtension.Extensions.getEnumerator();
+                    while (extEnum.moveNext())
+                    {
+                        addObjectToMatrix(extEnum.current(), true);
+                    }
+
+                    MapEnumerator modsEnum = objectExtension.Modifications.getEnumerator();
+                    while (modsEnum.MoveNext())
+                    {
+                        AxExtensionModification modification = modsEnum.currentValue();
+                        ttsbegin;
+                        ARBAOTObjectPropertiesMatrix::find(ARBAOTObjectPropertiesMatrix, modsEnum.currentKey(), true);
+
+                        var propModsEnum = modification.PropertyModifications.GetEnumerator();
+                        while (propModsEnum.MoveNext())
+                        {
+                            AxPropertyModification propMod = propModsEnum.Current;
+                            int arrayNum = propMap.lookup(propMod.Name);
+                            ARBAOTObjectPropertiesMatrix.Property[arrayNum] = propMod.Value;
+                            ARBAOTObjectPropertiesMatrix.PropertyModified[arrayNum] = NoYes::Yes;
+                        }
+                        ARBAOTObjectPropertiesMatrix.update();
+                        ttscommit;
+                    }
+
+                }
+
+                maxPropertyIndex = nextArrayNum - 1;
+                propertiesMatrixGrid.visible(true);
+            }
+            else
+            {
+                element.clearPropertiesMatrix();
+
+                anytype object;
+                List modifications;
+                if (_object is ARBObjectModification)
+                {
+                    ARBObjectModification objectModification = _object;
+                    object = objectModification.Object;
+                    modifications = objectModification.Modifications;
+                }
+                else
+                {
+                    object = _object;
+                }
+
+                int objectId = ARBAOTBrowserHelper::getObjectIdByName(object);
+                if (objectId)
+                {
+                    ARBAOTObjectProperties.clear();
+                    ARBAOTObjectProperties.Name = '_Id';
+                    ARBAOTObjectProperties.Value = int2Str(objectId);
+                    ARBAOTObjectProperties.insert();
+                }
+
+                if (object is AxTableField)
+                {
+                    anytype parent = ObjectTree.getItem(ObjectTree.getRoot()).data();
+                    ARBObjectModification objectMod = parent as ARBObjectModification;
+                    if (objectMod)
+                    {
+                        parent = objectMod.Object;
+                    }
+                    AxTable table = parent as AxTable;
+                    currentTableId = tableName2Id(table.Name);
+                    AxTableField tableField = object as AxTableField;
+                    ARBAOTObjectProperties.clear();
+                    ARBAOTObjectProperties.Name = '_Id';
+                    ARBAOTObjectProperties.Value = int2Str(fieldName2Id(tableName2Id(table.Name), tableField.Name));
+                    ARBAOTObjectProperties.insert();
+                    ARBAOTObjectProperties.clear();
+                    ARBAOTObjectProperties.Name = '_Type';
+                    ARBAOTObjectProperties.Value = this.getFieldType(tableField);
+                    ARBAOTObjectProperties.insert();
+                }
+                else if (object is AxEdt)
+                {
+                    AxEdt edt = object as AxEdt;
+                    ARBAOTObjectProperties.clear();
+                    ARBAOTObjectProperties.Name = '_Type';
+                    ARBAOTObjectProperties.Value = this.getEdtType(edt);
+                    ARBAOTObjectProperties.insert();
+                }
+                else if (object is AxTable)
+                {
+                    ARBAOTObjectProperties.clear();
+                    ARBAOTObjectProperties.Name = '_SQLName';
+                    Microsoft.Dynamics.AX.Metadata.Core.MetaModel.INamedObject namedObject = object as Microsoft.Dynamics.AX.Metadata.Core.MetaModel.INamedObject;
+                    ARBAOTObjectProperties.Value = ARBAOTBrowserHelper::getTableSqlName(namedObject.Name);
+                    ARBAOTObjectProperties.insert();
+                }
+
+                if (showCode && Arbela.Dynamics.Ax.Xpp.MetadataSupport::CanGetSourceText(object))
+                {
+                    try
+                    {
+                        CodeViewer.parmHtml(Arbela.Dynamics.AX.Xpp.Support.HtmlFormatHelper::Format(Arbela.Dynamics.Ax.Xpp.MetadataSupport::GetXppSourceText(object)));
+                    }
+                    catch (Exception::CLRError)
+                    {
+                        CodeViewer.parmHtml(Arbela.Dynamics.Ax.Xpp.MetadataSupport::GetXppSourceText(object));
+                    }
+                    CodeViewerGroup.visible(true);
+                }
+
+                System.Type t = object.GetType();
+       
+                var props = t.GetProperties();
+                for (int i = 0; i < props.Length; i++)
+                {
+                    PropertyInfo prop = props.GetValue(i);
+                    System.Object propValue = prop.GetValue(object);
+                    if (((propValue is System.String) ||
+                        (!(propValue is System.Collections.IEnumerable)
+                            && prop.PropertyType.Name != ARBAOTBrowserConstants::AxPropertyCollection
+                            && prop.PropertyType.Name != ARBAOTBrowserConstants::AxFormPropertyCollection))
+                        && prop.Name != ARBAOTBrowserConstants::CompilerMetadata
+                        && prop.Name != ARBAOTBrowserConstants::Design
+                        && prop.Name != ARBAOTBrowserConstants::FormControl)
+                    {
+                        if (showCode && prop.Name == ARBAOTBrowserConstants::Source)
+                        {
+                            try
+                            {
+                                CodeViewer.parmHtml(Arbela.Dynamics.AX.Xpp.Support.HtmlFormatHelper::Format(this.getPropertyValue(prop, object)));
+                            }
+                            catch (Exception::CLRError)
+                            {
+                                CodeViewer.parmHtml(this.getPropertyValue(prop, object));
+                            }
+                            CodeViewerGroup.visible(true);
+                        }
+                        else
+                        {
+                            ARBAOTObjectProperties.clear();
+                            ARBAOTObjectProperties.Name = prop.Name;
+                            if (prop.Name == ARBAOTBrowserConstants::Label
+                                || prop.Name == ARBAOTBrowserConstants::HelpText)
+                            {
+                                ARBAOTObjectProperties.Value = this.getLabelValue(prop, object);
+                            }
+                            else
+                            {
+                                ARBAOTObjectProperties.Value = this.getPropertyValue(prop, object);
+                            }
+                            ARBAOTObjectProperties.insert();
+                        }
+                    }
+                }
+
+                if (modifications != null)
+                {
+                    ListEnumerator modsEnum = modifications.getEnumerator();
+                    ttsbegin;
+                    while (modsEnum.MoveNext())
+                    {
+                        AxExtensionModification modification = modsEnum.current();
+
+                        var propModsEnum = modification.PropertyModifications.GetEnumerator();
+                        while (propModsEnum.MoveNext())
+                        {
+                            AxPropertyModification propMod = propModsEnum.Current;
+                            ARBAOTObjectProperties::find(ARBAOTObjectProperties, propMod.Name, true);
+                            if (_object is AxEnumValue && propMod.Name == 'Value')
+                            {
+                                anytype parent = ObjectTree.getItem(ObjectTree.getRoot()).data();
+                                ARBObjectModification objectMod = parent as ARBObjectModification;
+                                if (objectMod)
+                                {
+                                    parent = objectMod.Object;
+                                }
+                                AxEnum enum = parent as AxEnum;
+                                AxEnumValue enumValue = _object as AxEnumValue;
+                                ARBAOTObjectProperties.Value = int2Str(symbol2Enum(enumName2Id(enum.Name), enumValue.Name));
+                            }
+                            else
+                            {
+                                ARBAOTObjectProperties.Value = propMod.Value;
+                            }
+                            ARBAOTObjectProperties.Modified = NoYes::Yes;
+                            if (ARBAOTObjectProperties)
+                            {
+                                ARBAOTObjectProperties.update();
+                            }
+                            else
+                            {
+                                ARBAOTObjectProperties.Name = propMod.Name;
+                                ARBAOTObjectProperties.insert();
+                            }
+                        }
+                    }
+                    ttscommit;
+                }
+
+                PropertiesGrid.visible(true);
+            }
+        }
+        else
+        {
+            element.clearPropertiesMatrix();
+            PropertiesGrid.visible(false);
+        }
+        ARBAOTObjectProperties_ds.executeQuery();
+        ARBAOTObjectPropertiesMatrix_ds.executeQuery();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getFieldType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves the primitive type name string for a table field based on its concrete metadata type.
+    /// </summary>
+    /// <param name="_axTableField">The table field metadata object.</param>
+    /// <returns>The type name string (e.g., "Int", "String", "Enum", "UtcDateTime").</returns>
+    protected str getFieldType(AxTableField _axTableField)
+    {
+        str ret;
+        switch (true)
+        {
+            case _axTableField is AxTableFieldInt:
+                ret = 'Int';
+                break;
+            case _axTableField is AxTableFieldInt64:
+                ret = 'Int64';
+                break;
+            case _axTableField is AxTableFieldReal:
+                ret = 'Real';
+                break;
+            case _axTableField is AxTableFieldString:
+                ret = 'String';
+                break;
+            case _axTableField is AxTableFieldContainer:
+                ret = 'Container';
+                break;
+            case _axTableField is AxTableFieldDate:
+                ret = 'Date';
+                break;
+            case _axTableField is AxTableFieldEnum:
+                ret = 'Enum';
+                break;
+            case _axTableField is AxTableFieldGuid:
+                ret = 'Guid';
+                break;
+            case _axTableField is AxTableFieldTime:
+                ret = 'Time';
+                break;
+            case _axTableField is AxTableFieldUtcDateTime:
+                ret = 'UtcDateTime';
+                break;
+        }
+
+        return ret;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getEdtType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves the primitive type name string for an EDT based on its concrete metadata type.
+    /// </summary>
+    /// <param name="_axEdt">The EDT metadata object.</param>
+    /// <returns>The type name string (e.g., "Int", "String", "Enum", "UtcDateTime").</returns>
+    protected str getEdtType(AxEdt _axEdt)
+    {
+        str ret;
+        switch (true)
+        {
+            case _axEdt is AxEdtInt:
+                ret = 'Int';
+                break;
+            case _axEdt is AxEdtInt64:
+                ret = 'Int64';
+                break;
+            case _axEdt is AxEdtReal:
+                ret = 'Real';
+                break;
+            case _axEdt is AxEdtString:
+                ret = 'String';
+                break;
+            case _axEdt is AxEdtContainer:
+                ret = 'Container';
+                break;
+            case _axEdt is AxEdtDate:
+                ret = 'Date';
+                break;
+            case _axEdt is AxEdtEnum:
+                ret = 'Enum';
+                break;
+            case _axEdt is AxEdtGuid:
+                ret = 'Guid';
+                break;
+            case _axEdt is AxEdtTime:
+                ret = 'Time';
+                break;
+            case _axEdt is AxEdtUtcDateTime:
+                ret = 'UtcDateTime';
+                break;
+        }
+
+        return ret;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getPropertyValue</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets a property value from a metadata object using reflection, with special handling
+    /// for return types, enum values, string sizes, labels, descriptions, and help text.
+    /// </summary>
+    /// <param name="_property">The reflection <c>PropertyInfo</c> for the property to read.</param>
+    /// <param name="_object">The metadata object to read the property from.</param>
+    /// <returns>The property value as a string.</returns>
+    protected str getPropertyValue(PropertyInfo _property, anytype _object)
+    {
+        str value;
+        if (_property.Name == ARBAOTBrowserConstants::ReturnType)
+        {
+            AxMethodReturnType returnType = _property.GetValue(_object);
+            value = returnType.Type.ToString() + ' - ' + returnType.TypeName;
+        }
+        else if (_object is AxEnumValue && _property.Name == 'Value')
+        {
+            anytype parent = ObjectTree.getItem(ObjectTree.getRoot()).data();
+            ARBObjectModification objectMod = parent as ARBObjectModification;
+            if (objectMod)
+            {
+                parent = objectMod.Object;
+            }
+            AxEnum enum = parent as AxEnum;
+            AxEnumValue enumValue = _object as AxEnumValue;
+            value = int2Str(symbol2Enum(enumName2Id(enum.Name), enumValue.Name));
+        }
+        else if (_object is AxTableFieldString && _property.Name == ARBAOTBrowserConstants::StringSize)
+        {
+            AxTableFieldString fieldString = _object;
+            AxEdt extendsEdt = Xpp.MetadataSupport::GetEdt(fieldString.ExtendedDataType);
+            if (extendsEdt != null)
+            {
+                AxEdtString extendsEdtString = extendsEdt as AxEdtString;
+                value = int2Str(extendsEdtString.StringSize);
+            }
+            else
+            {
+                value = _property.GetValue(_object).ToString();
+            }
+        }
+        else
+        {
+            value = (_property.Name == ARBAOTBrowserConstants::Label
+                || _property.Name == ARBAOTBrowserConstants::Description
+                || _property.Name == ARBAOTBrowserConstants::HelpText
+                || _property.Name == ARBAOTBrowserConstants::DeveloperDocumentation
+                || _property.Name == ARBAOTBrowserConstants::EntityRelationshipRole)
+                ? SysLabel::labelId2String(_property.GetValue(_object).ToString())
+                : (_property.GetValue(_object) == null ? '' : _property.GetValue(_object).ToString());
+        }
+
+        return value;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>getLabelValue</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves a label property value by traversing the EDT, enum, and data source hierarchy
+    /// to find the inherited label text when the immediate object has no label defined.
+    /// </summary>
+    /// <param name="_property">The reflection <c>PropertyInfo</c> for the label property.</param>
+    /// <param name="_object">The metadata object to resolve the label for.</param>
+    /// <param name="_depth">The current recursion depth to prevent infinite loops.</param>
+    /// <returns>The resolved label text, or an empty string if no label is found.</returns>
+    protected str getLabelValue(PropertyInfo _property, anytype _object, int _depth = 0)
+    {
+        const int maxDepth = 10;
+        if (_depth >= maxDepth)
+        {
+            return '';
+        }
+
+        str value = SysLabel::labelId2String(_property.GetValue(_object).ToString());
+
+        if (value == '')
+        {
+            if (_object is AxEdt && (_object as AxEdt).Extends != '')
+            {
+                AxEdt edt = _object as AxEdt;
+                AxEdt extendsEdt = Xpp.MetadataSupport::GetEdt(edt.Extends);
+                if (extendsEdt != null)
+                {
+                    value = this.getLabelValue(extendsEdt.GetType().GetProperty(_property.Name), extendsEdt, _depth + 1);
+                }
+            }
+            else
+            {
+                System.Type t = _object.GetType();
+                PropertyInfo edtProp = t.GetProperty(ARBAOTBrowserConstants::ExtendedDataType);
+                if (edtProp != null && edtProp.GetValue(_object) != null && edtProp.GetValue(_object).ToString() != '')
+                {
+                    str edtName = edtProp.GetValue(_object).ToString();
+                    if (edtName != '')
+                    {
+                        AxEdt edt = Xpp.MetadataSupport::GetEdt(edtName);
+                        if (edt != null)
+                        {
+                            value = this.getLabelValue(edt.GetType().GetProperty(_property.Name), edt, _depth + 1);
+                        }
+                    }
+                }
+                else
+                {
+                    PropertyInfo enumProp = t.GetProperty(ARBAOTBrowserConstants::EnumType);
+                    if (enumProp != null && enumProp.GetValue(_object) != null && enumProp.GetValue(_object).ToString() != '')
+                    {
+                        str enumName = enumProp.GetValue(_object).ToString();
+                        if (enumName != '')
+                        {
+                            AxEnum enum = Xpp.MetadataSupport::GetEnum(enumName);
+                            if (enum != null)
+                            {
+                                value = this.getLabelValue(enum.GetType().GetProperty(_property.Name), enum, _depth + 1);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        PropertyInfo dataSourceProp = t.GetProperty(ARBAOTBrowserConstants::DataSource);
+                        if (dataSourceProp != null && dataSourceProp.GetValue(_object) != null)
+                        {
+                            str dataSourceName = dataSourceProp.GetValue(_object).ToString();
+                            PropertyInfo dataFieldProp = t.GetProperty(ARBAOTBrowserConstants::DataField);
+                            if (dataFieldProp != null && dataFieldProp.GetValue(_object) != null)
+                            {
+                                str dataFieldName = dataFieldProp.GetValue(_object).ToString();
+                                if (aotObjectTree.getCollectionMap().exists(ARBAOTBrowserConstants::DataSources))
+                                {
+                                    Map datasourcesMap = aotObjectTree.getCollectionMap().lookup(ARBAOTBrowserConstants::DataSources);
+                                    if (datasourcesMap.exists(dataSourceName))
+                                    {
+                                        anytype dataSource = ObjectTree.getItem(datasourcesMap.lookup(dataSourceName)).data();
+                                        System.Type datasourceType = dataSource.GetType();
+                                        PropertyInfo tableProp = datasourceType.GetProperty(ARBAOTBrowserConstants::Table);
+                                        str tableName = tableProp.GetValue(dataSource);
+                                        AxTableField tableField = Xpp.MetadataSupport::GetTableField(tableName, dataFieldName);
+                                        if (tableField != null)
+                                        {
+                                            value = this.getLabelValue(tableField.GetType().GetProperty(_property.Name), tableField, _depth + 1);
+                                        }
+                                        else
+                                        {
+                                            AxViewField viewField = Xpp.MetadataSupport::GetViewField(tableName, dataFieldName);
+                                            if (viewField != null)
+                                            {
+                                                value = this.getLabelValue(viewField.GetType().GetProperty(_property.Name), viewField, _depth + 1);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>init</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Initializes the form, restoring last-used settings, configuring the AOT object tree provider, and handling caller context navigation.
+    /// </summary>
+    public void init()
+    {
+        super();
+
+        xSysLastValue::getLast(this);
+        this.setControlValuesFromSysLastValues();
+
+        Microsoft.Dynamics.ApplicationPlatform.Environment.IApplicationEnvironment applicationEnvironment = Microsoft.Dynamics.ApplicationPlatform.Environment.EnvironmentFactory::GetApplicationEnvironment();
+        if (!applicationEnvironment.Common.IsOneboxEnvironment)
+        {
+            showCode = false;
+            ViewCodeToggle.toggleValue(showCode);
+            ViewCodeToggle.visible(false);
+        }
+
+        ARBAOTObjectTree::updateProvider(showCode);
+
+        ResourceImage.imageLocation(SysImageLocation::AOTResource);
+        ResourceImageGroup.colorScheme(FormColorScheme::RGB);
+        ResourceImageGroup.backgroundColor(WinAPI::RGB2int(220,220,220));
+
+        Args args = element.args();
+
+        FormRun caller = element.args().caller();
+
+        if (caller != null)
+        {
+            switch (caller.name())
+            {
+                case formStr(FormControlPersonalization):
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(ARBAOTObjectType::Form);
+                    args.parm(caller.args().caller().name());
+                    args.parmObject(caller.args().parmObject());
+                    break;
+
+                case formStr(DMFEntity):
+                    FormDataSource datasource = caller.dataSource(formDataSourceStr(DMFEntity, DMFEntity)) as FormDataSource;
+                    DMFEntity entity = datasource.cursor();
+
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(ARBAOTObjectType::DataEntity);
+                    args.parm(entity.TargetEntity);
+                    break;
+
+                case formStr(ARBEntityFields):
+                    FormDataSource entityFieldsDatasource = caller.dataSource(formDataSourceStr(ARBEntityFields, ARBEntityFields)) as FormDataSource;
+                    ARBEntityFields entityField = entityFieldsDatasource.cursor();
+
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(ARBAOTObjectType::DataEntity);
+                    args.parm(entityField.EntityName);
+                    entityFieldName = entityField.EntityFieldName;
+                    break;
+
+                case formStr(ARBMenuItemReferences):
+                    FormDataSource menuItemReferencesDatasource = caller.dataSource(formDataSourceStr(ARBMenuItemReferences, ARBMenuItemReferences)) as FormDataSource;
+                    ARBMenuItemReferences menuItemReference = menuItemReferencesDatasource.cursor();
+
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(menuItemReference.RefObjectType);
+                    args.parm(menuItemReference.RefObjectName);
+                    selectedTreePath = menuItemReference.RefPath;
+                    break;
+
+                case formStr(DefaultDashboard):
+                    // If coming from the default dashboard don't filter
+                    break;
+
+                default:
+                    FormControl selectedControl = caller.selectedControl();
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(ARBAOTObjectType::Form);
+                    args.parm(caller.name());
+                    if (selectedControl)
+                    {
+                        args.parmObject(selectedControl);
+                    }
+                    break;
+            }
+        }
+
+        // Deep linking: parse URL query-string parameters when no caller context was set
+        if (args.parmEnumType() != enumNum(ARBAOTObjectType) || args.parm() == null || args.parm() == '')
+        {
+            str objectTypeName = getClientURLQueryValue('ObjectType');
+            str objectName     = getClientURLQueryValue('ObjectName');
+
+            if (objectTypeName != '' && objectName != '')
+            {
+                ARBAOTObjectType urlObjectType = ARBAOTBrowserUrlHelper::parseObjectType(objectTypeName);
+                if (urlObjectType != ARBAOTObjectType::None)
+                {
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(urlObjectType);
+                    args.parm(objectName);
+
+                    str treePath = getClientURLQueryValue('TreePath');
+                    if (treePath != '')
+                    {
+                        selectedTreePath = treePath;
+                    }
+                }
+            }
+        }
+
+        if (args.parmEnumType() == enumNum(ARBAOTObjectType) && args.parm() != null)
+        {
+            NavigationGroup.visible(false);
+            ARBAOTObjects_ds.queryBuildDataSource().enabled(false);
+            this.updateControls(args.parmEnum(), args.parm());
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+		<DataSources xmlns="">
+			<DataSource>
+				<Name>ARBAOTObjects</Name>
+				<Methods>
+					<Method>
+						<Name>active</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Handles the active record change event for the AOT objects data source.
+        /// </summary>
+        /// <returns>The result from the super() call.</returns>
+        public int active()
+        {
+            int ret;
+        
+            ret = super();
+
+            element.updateControlsFromTable();
+        
+            return ret;
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+				<Fields />
+			</DataSource>
+			<DataSource>
+				<Name>ARBAOTObjectProperties</Name>
+				<Methods>
+					<Method>
+						<Name>displayOption</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Sets display options for property rows, bolding modified properties.
+        /// </summary>
+        /// <param name = "_record">The current record being displayed.</param>
+        /// <param name = "_options">The row display options to modify.</param>
+        public void displayOption(Common _record, FormRowDisplayOption _options)
+        {
+            ARBAOTObjectProperties property = _record;
+            if (property.Modified)
+            {
+                _options.fontBold(true);
+            }
+
+            super(_record, _options);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+				<Fields />
+			</DataSource>
+			<DataSource>
+				<Name>ARBAOTObjectPropertiesMatrix</Name>
+				<Methods>
+					<Method>
+						<Name>displayOption</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Sets display options for matrix property rows, bolding modified and affected cells.
+        /// </summary>
+        /// <param name = "_record">The current record being displayed.</param>
+        /// <param name = "_options">The row display options to modify.</param>
+        public void displayOption(Common _record, FormRowDisplayOption _options)
+        {
+            ARBAOTObjectPropertiesMatrix property = _record;
+            if (property.Modified)
+            {
+                _options.fontBold(true);
+            }
+            else
+            {
+                boolean needBold = false;
+                for (int i = 1; i <= maxPropertyIndex; i++)
+                {
+                    if (property.PropertyModified[i])
+                    {
+                        _options.affectedElementsByControl(matrixControlMap.lookup(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, Property), i)));
+                        needBold = true;
+                    }
+                }
+                if (needBold)
+                {
+                    _options.affectedElementsByControl(matrixControlMap.lookup(strFmt('%1;%2', fieldNum(ARBAOTObjectPropertiesMatrix, TypeName), 0)));
+                    _options.fontBold(true);
+                }
+            }
+
+            super(_record, _options);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+				<Fields />
+			</DataSource>
+		</DataSources>
+		<DataControls xmlns="">
+			<Control>
+				<Name>ARBOpenTableBrowser</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Opens the SysTableBrowser for the selected table or the table passed via form arguments.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+
+            SysTableBrowser sysTableBrowser;
+            
+            sysTableBrowser = new SysTableBrowser();
+            Args args = element.args();
+            TableName tableName;
+            if (args.parmEnumType() == enumNum(ARBAOTObjectType) && args.parm() != null)
+            {
+                tableName = args.parm();
+            }
+            else
+            {
+                tableName = ARBAOTObjects.Name;
+            }
+
+            sysTableBrowser.parmTableName(tableName);
+            sysTableBrowser.run(tablename2id(tableName));
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>ARBMenuItemReferences</Name>
+				<Type>MenuFunctionButton</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Opens the menu item references form, passing the current object name as a parameter.
+        /// </summary>
+        public void clicked()
+        {
+            this.parameters(currentObjectName);
+            super();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>ExtensionViewToggle</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Toggles the extension view and refreshes the displayed AOT object controls.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+
+            Args args = element.args();
+            if (args.parmEnumType() == enumNum(ARBAOTObjectType) && args.parm() != null)
+            {
+                element.updateControls(args.parmEnum(), args.parm());
+            }
+            else
+            {
+                element.updateControlsFromTable();
+            }
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>ViewCodeToggle</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Toggles the code visibility setting and refreshes the AOT object tree and controls.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+
+            showCode = this.toggleValue();
+            ARBAOTObjectTree::updateProvider(showCode);
+
+            Args args = element.args();
+            if (args.parmEnumType() == enumNum(ARBAOTObjectType) && args.parm() != null)
+            {
+                element.updateControls(args.parmEnum(), args.parm());
+            }
+            else
+            {
+                element.updateControlsFromTable();
+            }
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>CopyLinkButton</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Copies a deep link URL for the current AOT object to the browser clipboard.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+
+            str treePath = ARBAOTBrowserUrlHelper::getSelectedTreePath(ObjectTree);
+            str url = ARBAOTBrowserUrlHelper::buildUrl(currentObjectType, currentObjectName, treePath);
+            ARBClipboardHelper::copyToClipboard(url);
+            info("@AOTBrowser:LinkCopied");
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>AOTObjectTypeFilter</Name>
+				<Type>ComboBox</Type>
+				<Methods>
+					<Method>
+						<Name>modified</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Handles the modified event for the AOT object type filter, updating the query range and refreshing results.
+        /// </summary>
+        /// <returns>The result from the super() call.</returns>
+        public boolean modified()
+        {
+            boolean ret;
+    
+            ret = super();
+
+            if (AOTObjectTypeFilter.selection() == enum2int(ARBAOTObjectType::None))
+            {
+                ARBAOTObjects_ds.queryBuildDataSource().clearRange(fieldNum(ARBAOTObjects,Type));
+            }
+            else
+            {
+                SysQuery::findOrCreateRange(ARBAOTObjects_ds.queryBuildDataSource(), fieldNum(ARBAOTObjects,Type)).value(queryValue(AOTObjectTypeFilter.selection()));
+            }
+            ARBAOTObjects_ds.executeQuery();
+    
+            return ret;
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>TreeSearchString</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>modified</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Triggers Find Next whenever the search text is changed.
+        /// </summary>
+        /// <returns>The result from the super() call.</returns>
+        public boolean modified()
+        {
+            boolean ret = super();
+            if (searchNextTreeItems != null && TreeSearchString.text() != '')
+            {
+                TreeItemIdx foundIdx = element.findTreeItem(
+                    searchNextTreeItems,
+                    TreeSearchString.text());
+                if (foundIdx)
+                {
+                    ObjectTree.select(foundIdx);
+                }
+            }
+            return ret;
+        }
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>TreeSearchPrevInline</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Searches the previous tree item node containing the search text.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+            if (searchPrevTreeItems == null || TreeSearchString.text() == '')
+            {
+                return;
+            }
+            TreeItemIdx foundIdx = element.findTreeItem(
+                searchPrevTreeItems,
+                TreeSearchString.text());
+            if (foundIdx)
+            {
+                ObjectTree.select(foundIdx);
+            }
+        }
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>TreeSearchNextInline</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Searches the next tree item node containing the search text.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+            if (searchNextTreeItems == null || TreeSearchString.text() == '')
+            {
+                return;
+            }
+            TreeItemIdx foundIdx = element.findTreeItem(
+                searchNextTreeItems,
+                TreeSearchString.text());
+            if (foundIdx)
+            {
+                ObjectTree.select(foundIdx);
+            }
+        }
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>ObjectTree</Name>
+				<Type>Tree</Type>
+				<Methods>
+					<Method>
+						<Name>selectionChanged</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Handles tree node selection changes, updating the properties group for the newly selected item.
+        /// </summary>
+        /// <param name = "_OldItem">The previously selected tree item.</param>
+        /// <param name = "_NewItem">The newly selected tree item.</param>
+        /// <param name = "_how">The method by which the selection was changed.</param>
+        public void selectionChanged(FormTreeItem _OldItem, FormTreeItem _NewItem, FormTreeSelect _how)
+        {
+            super(_OldItem, _NewItem, _how);
+
+            element.updatePropertiesGroup(_NewItem.data());
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>ACMAOTObjectProperties_Value</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Navigates to the related AOT object based on the current property value, opening a new AOT Browser instance.
+        /// </summary>
+        public void jumpRef()
+        {
+            ARBAOTObjectProperties props;
+            props.setTmpData(ARBAOTObjectProperties);
+            Args args = new Args();
+            args.parmEnumType(enumNum(ARBAOTObjectType));
+
+            switch(ARBAOTObjectProperties.Name)
+            {
+                case ARBAOTBrowserConstants::Table:
+                case ARBAOTBrowserConstants::RelatedTable:
+                    args.parmEnum(ARBAOTObjectType::Table);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::ExtendedDataType:
+                    args.parmEnum(ARBAOTObjectType::ExtendedDataType);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::Query:
+                    args.parmEnum(ARBAOTObjectType::Query);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::EnumType:
+                    args.parmEnum(ARBAOTObjectType::BaseEnum);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::Tile:
+                    args.parmEnum(ARBAOTObjectType::Tile);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::DataEntity:
+                    args.parmEnum(ARBAOTObjectType::DataEntity);
+                    args.parm(this.valueStr());
+                    new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    break;
+
+                case ARBAOTBrowserConstants::Object:
+                case ARBAOTBrowserConstants::ObjectName:
+                    props.setTmpData(ARBAOTObjectProperties);
+                    select firstOnly props
+                        where props.Name == ARBAOTBrowserConstants::ObjectType;
+                    if (props)
+                    {
+                        switch (props.Value)
+                        {
+                            case ARBAOTBrowserConstants::Form:
+                                args.parmEnum(ARBAOTObjectType::Form);
+                                break;
+                            case ARBAOTBrowserConstants::ClassStr:
+                                args.parmEnum(ARBAOTObjectType::Class);
+                                break;
+                            case ARBAOTBrowserConstants::Query:
+                                args.parmEnum(ARBAOTObjectType::Query);
+                                break;
+                            case ARBAOTBrowserConstants::MenuItemAction:
+                                args.parmEnum(ARBAOTObjectType::MenuItemAction);
+                                break;
+                            case ARBAOTBrowserConstants::MenuItemDisplay:
+                                args.parmEnum(ARBAOTObjectType::MenuItemDisplay);
+                                break;
+                            case ARBAOTBrowserConstants::MenuItemOutput:
+                                args.parmEnum(ARBAOTObjectType::MenuItemOutput);
+                                break;
+                        }
+                        args.parm(this.valueStr());
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    break;
+
+                case ARBAOTBrowserConstants::ExtendsStr:
+                    select firstOnly props
+                        where props.Name == ARBAOTBrowserConstants::SupportInheritance;
+                    if (props)
+                    {
+                        args.parmEnum(ARBAOTObjectType::Table);
+                        args.parm(this.valueStr());
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    else
+                    {
+                        args.parmEnum(ARBAOTObjectType::ExtendedDataType);
+                        args.parm(this.valueStr());
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    break;
+
+                case ARBAOTBrowserConstants::MenuItemName:
+                    props.setTmpData(ARBAOTObjectProperties);
+                    select firstOnly props
+                        where props.Name == ARBAOTBrowserConstants::MenuItemType;
+                    if (props)
+                    {
+                        switch (props.Value)
+                        {
+                            case ARBAOTBrowserConstants::DisplayStr:
+                                args.parmEnum(ARBAOTObjectType::MenuItemDisplay);
+                                break;
+                            case ARBAOTBrowserConstants::Action:
+                                args.parmEnum(ARBAOTObjectType::MenuItemAction);
+                                break;
+                            case ARBAOTBrowserConstants::Output:
+                                args.parmEnum(ARBAOTObjectType::MenuItemOutput);
+                                break;
+                        }
+                        args.parm(this.valueStr());
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    break;
+
+                case ARBAOTBrowserConstants::DataSource:
+                    str tableName;
+                    switch (currentObjectType)
+                    {
+                        case ARBAOTObjectType::Form:
+                            tableName = ARBAOTBrowserHelper::getFormDatasourceTableName(currentObjectName, this.valueStr());
+                            break;
+
+                        case ARBAOTObjectType::View:
+                            tableName = ARBAOTBrowserHelper::getViewDatasourceTableName(currentObjectName, this.valueStr());
+                            break;
+                    }
+
+                    if (tableName)
+                    {
+                        args.parmEnum(ARBAOTObjectType::Table);
+                        args.parm(tableName);
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    break;
+
+                case ARBAOTBrowserConstants::DataField:
+                    str dataFieldTableName;
+                    System.Type t;
+                    PropertyInfo dataSourceProp;
+                    str datasourceName;
+                    switch (currentObjectType)
+                    {
+                        case ARBAOTObjectType::Form:
+                            t = selectedObject.GetType();
+                            dataSourceProp = t.GetProperty(ARBAOTBrowserConstants::DataSource);
+                            if (dataSourceProp != null)
+                            {
+                                datasourceName = dataSourceProp.GetValue(selectedObject).ToString();
+                            }
+                            if (datasourceName)
+                            {
+                                dataFieldTableName = ARBAOTBrowserHelper::getFormDatasourceTableName(currentObjectName, datasourceName);
+                            }
+                            break;
+
+                        case ARBAOTObjectType::View:
+                            t = selectedObject.GetType();
+                            dataSourceProp = t.GetProperty(ARBAOTBrowserConstants::DataSource);
+                            
+                            if (dataSourceProp != null)
+                            {
+                                datasourceName = dataSourceProp.GetValue(selectedObject).ToString();
+                            }
+                            if (datasourceName)
+                            {
+                                dataFieldTableName = ARBAOTBrowserHelper::getViewDatasourceTableName(currentObjectName, datasourceName);
+                            }
+                            break;
+                    }
+                    if (dataFieldTableName)
+                    {
+                        args.parmEnum(ARBAOTObjectType::Table);
+                        args.parm(dataFieldTableName);
+                        args.parmObject(this);
+                        new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+                    }
+                    break;
+            }
+
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+		</DataControls>
+		<Members xmlns="" />
+	</SourceCode>
+	<DataSources>
+		<AxFormDataSource xmlns="">
+			<Name>ARBAOTObjects</Name>
+			<Table>ARBAOTObjects</Table>
+			<Fields>
+				<AxFormDataSourceField>
+					<DataField>Label</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Name</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>ObjectId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Partition</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>RecId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>TableId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Type</DataField>
+				</AxFormDataSourceField>
+			</Fields>
+			<ReferencedDataSources />
+			<AllowCreate>No</AllowCreate>
+			<AllowDelete>No</AllowDelete>
+			<AllowEdit>No</AllowEdit>
+			<InsertAtEnd>No</InsertAtEnd>
+			<InsertIfEmpty>No</InsertIfEmpty>
+			<DataSourceLinks />
+			<DerivedDataSources />
+		</AxFormDataSource>
+		<AxFormDataSource xmlns="">
+			<Name>ARBAOTObjectProperties</Name>
+			<Table>ARBAOTObjectProperties</Table>
+			<Fields>
+				<AxFormDataSourceField>
+					<DataField>Name</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Partition</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>RecId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>TableId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Value</DataField>
+				</AxFormDataSourceField>
+			</Fields>
+			<ReferencedDataSources />
+			<DataSourceLinks />
+			<DerivedDataSources />
+		</AxFormDataSource>
+		<AxFormDataSource xmlns="">
+			<Name>ARBAOTObjectPropertiesMatrix</Name>
+			<Table>ARBAOTObjectPropertiesMatrix</Table>
+			<Fields>
+				<AxFormDataSourceField>
+					<DataField>Partition</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[1]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[10]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[11]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[12]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[13]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[14]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[15]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[16]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[17]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[18]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[19]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[2]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[20]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[21]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[22]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[23]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[24]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[25]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[26]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[27]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[28]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[29]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[3]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[30]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[31]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[32]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[33]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[34]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[35]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[36]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[37]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[38]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[39]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[4]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[40]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[41]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[42]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[43]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[44]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[45]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[46]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[47]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[48]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[49]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[5]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[50]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[51]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[52]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[53]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[54]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[55]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[56]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[57]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[58]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[59]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[6]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[60]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[61]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[62]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[63]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[64]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[65]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[66]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[67]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[68]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[69]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[7]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[70]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[71]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[72]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[73]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[74]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[75]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[8]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Property[9]</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>RecId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>TableId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>TypeName</DataField>
+				</AxFormDataSourceField>
+			</Fields>
+			<ReferencedDataSources />
+			<AllowCreate>No</AllowCreate>
+			<AllowDelete>No</AllowDelete>
+			<AllowEdit>No</AllowEdit>
+			<InsertAtEnd>No</InsertAtEnd>
+			<InsertIfEmpty>No</InsertIfEmpty>
+			<DataSourceLinks />
+			<DerivedDataSources />
+		</AxFormDataSource>
+	</DataSources>
+	<Design>
+		<Caption xmlns="">@AOTBrowser:AOTBrowser</Caption>
+		<Pattern xmlns="">SimpleListDetails</Pattern>
+		<PatternVersion xmlns="">1.3</PatternVersion>
+		<ShowDeleteButton xmlns="">No</ShowDeleteButton>
+		<ShowNewButton xmlns="">No</ShowNewButton>
+		<Style xmlns="">SimpleListDetails</Style>
+		<ViewEditMode xmlns="">View</ViewEditMode>
+		<Controls xmlns="">
+			<AxFormControl xmlns=""
+				i:type="AxFormActionPaneControl">
+				<Name>ApplicationBar</Name>
+				<Type>ActionPane</Type>
+				<FormControlExtension
+					i:nil="true" />
+				<Controls>
+					<AxFormControl xmlns=""
+						i:type="AxFormButtonGroupControl">
+						<Name>GeneralButtonGroup</Name>
+						<Type>ButtonGroup</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormMenuFunctionButtonControl">
+								<Name>ARBAOTObjectPopulate</Name>
+								<Type>MenuFunctionButton</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<MenuItemName>ARBAOTObjectPopulate</MenuItemName>
+								<MenuItemType>Action</MenuItemType>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormButtonControl">
+								<Name>ARBOpenTableBrowser</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>Button</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<Text>@AOTBrowser:OpenTableBrowserButton</Text>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormMenuFunctionButtonControl">
+								<Name>ARBMenuItemReferences</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>MenuFunctionButton</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<MenuItemName>ARBMenuItemReferences</MenuItemName>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormButtonControl">
+								<Name>ExtensionViewToggle</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>Button</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<Text>@AOTBrowser:ViewExtensionsInline</Text>
+								<ToggleButton>Check</ToggleButton>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormButtonControl">
+								<Name>ViewCodeToggle</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<HelpText>@AOTBrowser:ViewCodeHelp</HelpText>
+								<Type>Button</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<Text>@AOTBrowser:ViewCode</Text>
+								<ToggleButton>Check</ToggleButton>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormButtonControl">
+								<Name>CopyLinkButton</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Enabled>No</Enabled>
+								<HelpText>@AOTBrowser:CopyLinkHelp</HelpText>
+								<Type>Button</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<Text>@AOTBrowser:CopyLink</Text>
+							</AxFormControl>
+						</Controls>
+						<Caption>General</Caption>
+					</AxFormControl>
+				</Controls>
+			</AxFormControl>
+			<AxFormControl xmlns=""
+				i:type="AxFormGroupControl">
+				<Name>NavigationGroup</Name>
+				<AutoDeclaration>Yes</AutoDeclaration>
+				<HeightMode>SizeToAvailable</HeightMode>
+				<Type>Group</Type>
+				<FormControlExtension
+					i:nil="true" />
+				<Controls>
+					<AxFormControl>
+						<Name>QuickFilter</Name>
+						<WidthMode>SizeToAvailable</WidthMode>
+						<FormControlExtension>
+							<Name>QuickFilterControl</Name>
+							<ExtensionComponents />
+							<ExtensionProperties>
+								<AxFormControlExtensionProperty>
+									<Name>targetControlName</Name>
+									<Type>String</Type>
+									<Value>NavigationGrid</Value>
+								</AxFormControlExtensionProperty>
+								<AxFormControlExtensionProperty>
+									<Name>placeholderText</Name>
+									<Type>String</Type>
+								</AxFormControlExtensionProperty>
+								<AxFormControlExtensionProperty>
+									<Name>defaultColumnName</Name>
+									<Type>String</Type>
+								</AxFormControlExtensionProperty>
+							</ExtensionProperties>
+						</FormControlExtension>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormGroupControl">
+						<Name>AOTObjectTypeFilterGroup</Name>
+						<Type>Group</Type>
+						<WidthMode>SizeToAvailable</WidthMode>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormComboBoxControl">
+								<Name>AOTObjectTypeFilter</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>ComboBox</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<EnumType>ARBAOTObjectType</EnumType>
+								<Items />
+							</AxFormControl>
+						</Controls>
+						<FrameType>None</FrameType>
+						<Style>CustomFilter</Style>
+						<ViewEditMode>Edit</ViewEditMode>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormGridControl">
+						<Name>NavigationGrid</Name>
+						<AllowEdit>No</AllowEdit>
+						<Type>Grid</Type>
+						<WidthMode>SizeToContent</WidthMode>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormStringControl">
+								<Name>ACMAOTObjects_Name</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Type>String</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>Name</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormStringControl">
+								<Name>ACMAOTObjects_Label</Name>
+								<Type>String</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>Label</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormComboBoxControl">
+								<Name>ACMAOTObjects_Type</Name>
+								<Type>ComboBox</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>Type</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+								<Items />
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormIntegerControl">
+								<Name>ARBAOTObjects_ObjectId</Name>
+								<Type>Integer</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>ObjectId</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+							</AxFormControl>
+						</Controls>
+						<MultiSelect>No</MultiSelect>
+						<ShowRowLabels>No</ShowRowLabels>
+						<Style>List</Style>
+					</AxFormControl>
+				</Controls>
+				<FrameType>None</FrameType>
+				<Style>SidePanel</Style>
+			</AxFormControl>
+			<AxFormControl xmlns=""
+				i:type="AxFormGroupControl">
+				<Name>DetailsHeader</Name>
+				<Pattern>FieldsFieldGroups</Pattern>
+				<PatternVersion>1.1</PatternVersion>
+				<Type>Group</Type>
+				<WidthMode>SizeToAvailable</WidthMode>
+				<FormControlExtension
+					i:nil="true" />
+				<Controls />
+				<ColumnsMode>Fill</ColumnsMode>
+				<FrameType>None</FrameType>
+			</AxFormControl>
+			<AxFormControl xmlns=""
+				i:type="AxFormTabControl">
+				<Name>DetailsTabs</Name>
+				<Type>Tab</Type>
+				<FormControlExtension
+					i:nil="true" />
+				<Controls>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailsTab</Name>
+						<AutoDeclaration>Yes</AutoDeclaration>
+						<Pattern>Custom</Pattern>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGroupControl">
+								<Name>DetailsBodyGroup</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Group</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormGroupControl">
+										<Name>DetailsNavigationList</Name>
+										<HeightMode>SizeToAvailable</HeightMode>
+										<Type>Group</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<Controls>
+											<AxFormControl xmlns=""
+												i:type="AxFormGroupControl">
+												<Name>TreeSearchFilterGroup</Name>
+												<AutoDeclaration>Yes</AutoDeclaration>
+												<Type>Group</Type>
+												<FormControlExtension
+													i:nil="true" />
+												<Controls>
+													<AxFormControl xmlns=""
+														i:type="AxFormStringControl">
+														<Name>TreeSearchString</Name>
+														<AutoDeclaration>Yes</AutoDeclaration>
+														<Type>String</Type>
+														<FormControlExtension
+															i:nil="true" />
+														<Label>@AOTBrowser:TreeSearchPlaceholder</Label>
+														<LabelPosition>Above</LabelPosition>
+													</AxFormControl>
+													<AxFormControl xmlns=""
+														i:type="AxFormButtonGroupControl">
+														<Name>TreeSearchFindButtonGroup</Name>
+														<Type>ButtonGroup</Type>
+														<FormControlExtension
+															i:nil="true" />
+														<Controls>
+															<AxFormControl xmlns=""
+																i:type="AxFormButtonControl">
+																<Name>TreeSearchPrevInline</Name>
+																<Type>Button</Type>
+																<FormControlExtension
+																	i:nil="true" />
+																<ButtonDisplay>ImageOnly</ButtonDisplay>
+																<NormalImage>ChevronUp</NormalImage>
+																<Text>@AOTBrowser:TreeSearchPrev</Text>
+															</AxFormControl>
+															<AxFormControl xmlns=""
+																i:type="AxFormButtonControl">
+																<Name>TreeSearchNextInline</Name>
+																<Type>Button</Type>
+																<FormControlExtension
+																	i:nil="true" />
+																<ButtonDisplay>ImageOnly</ButtonDisplay>
+																<NormalImage>ChevronDown</NormalImage>
+																<Text>@AOTBrowser:TreeSearchNext</Text>
+															</AxFormControl>
+														</Controls>
+														<Columns>2</Columns>
+													</AxFormControl>
+												</Controls>
+												<ArrangeMethod>HorizontalLeft</ArrangeMethod>
+												<ViewEditMode>Edit</ViewEditMode>
+											</AxFormControl>
+											<AxFormControl xmlns=""
+												i:type="AxFormTreeControl">
+												<Name>ObjectTree</Name>
+												<AutoDeclaration>Yes</AutoDeclaration>
+												<HeightMode>SizeToAvailable</HeightMode>
+												<Type>Tree</Type>
+												<FormControlExtension
+													i:nil="true" />
+											</AxFormControl>
+										</Controls>
+										<FrameType>None</FrameType>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormGroupControl">
+										<Name>DetailsDetailsGroup</Name>
+										<AutoDeclaration>Yes</AutoDeclaration>
+										<HeightMode>SizeToAvailable</HeightMode>
+										<Type>Group</Type>
+										<WidthMode>SizeToAvailable</WidthMode>
+										<FormControlExtension
+											i:nil="true" />
+										<Controls>
+											<AxFormControl xmlns=""
+												i:type="AxFormGroupControl">
+												<Name>DetailsDetailsHeader</Name>
+												<Type>Group</Type>
+												<WidthMode>SizeToAvailable</WidthMode>
+												<FormControlExtension
+													i:nil="true" />
+												<Controls />
+												<ColumnsMode>Fill</ColumnsMode>
+												<FrameType>None</FrameType>
+											</AxFormControl>
+											<AxFormControl xmlns=""
+												i:type="AxFormGroupControl">
+												<Name>DetailsDetailsPropertiesGroup</Name>
+												<AllowEdit>No</AllowEdit>
+												<AutoDeclaration>Yes</AutoDeclaration>
+												<Type>Group</Type>
+												<WidthMode>SizeToAvailable</WidthMode>
+												<FormControlExtension
+													i:nil="true" />
+												<Controls>
+													<AxFormControl xmlns=""
+														i:type="AxFormGroupControl">
+														<Name>PropertiesGridGroup</Name>
+														<HeightMode>SizeToAvailable</HeightMode>
+														<Type>Group</Type>
+														<Width>500</Width>
+														<FormControlExtension
+															i:nil="true" />
+														<Controls>
+															<AxFormControl xmlns=""
+																i:type="AxFormGridControl">
+																<Name>PropertiesGrid</Name>
+																<AutoDeclaration>Yes</AutoDeclaration>
+																<Type>Grid</Type>
+																<Width>225</Width>
+																<FormControlExtension
+																	i:nil="true" />
+																<Controls>
+																	<AxFormControl xmlns=""
+																		i:type="AxFormStringControl">
+																		<Name>ACMAOTObjectProperties_Name</Name>
+																		<Type>String</Type>
+																		<FormControlExtension
+																			i:nil="true" />
+																		<DataField>Name</DataField>
+																		<DataSource>ARBAOTObjectProperties</DataSource>
+																	</AxFormControl>
+																	<AxFormControl xmlns=""
+																		i:type="AxFormStringControl">
+																		<Name>ACMAOTObjectProperties_Value</Name>
+																		<Type>String</Type>
+																		<FormControlExtension
+																			i:nil="true" />
+																		<DataField>Value</DataField>
+																		<DataSource>ARBAOTObjectProperties</DataSource>
+																	</AxFormControl>
+																</Controls>
+																<DataSource>ARBAOTObjectProperties</DataSource>
+																<MultiSelect>No</MultiSelect>
+																<Style>SimpleReadOnly</Style>
+															</AxFormControl>
+														</Controls>
+													</AxFormControl>
+													<AxFormControl xmlns=""
+														i:type="AxFormGroupControl">
+														<Name>ResourceImageGroup</Name>
+														<AutoDeclaration>Yes</AutoDeclaration>
+														<Type>Group</Type>
+														<Visible>No</Visible>
+														<FormControlExtension
+															i:nil="true" />
+														<Controls>
+															<AxFormControl xmlns=""
+																i:type="AxFormImageControl">
+																<Name>ResourceImage</Name>
+																<AutoDeclaration>Yes</AutoDeclaration>
+																<Height>250</Height>
+																<HeightMode>Manual</HeightMode>
+																<Type>Image</Type>
+																<Width>250</Width>
+																<WidthMode>Manual</WidthMode>
+																<FormControlExtension
+																	i:nil="true" />
+															</AxFormControl>
+														</Controls>
+														<Caption>@SYS58650</Caption>
+													</AxFormControl>
+													<AxFormControl xmlns=""
+														i:type="AxFormGroupControl">
+														<Name>CodeViewerGroup</Name>
+														<AutoDeclaration>Yes</AutoDeclaration>
+														<HeightMode>SizeToAvailable</HeightMode>
+														<Type>Group</Type>
+														<WidthMode>SizeToAvailable</WidthMode>
+														<FormControlExtension
+															i:nil="true" />
+														<Controls>
+															<AxFormControl>
+																<Name>CodeViewer</Name>
+																<AutoDeclaration>Yes</AutoDeclaration>
+																<HeightMode>SizeToAvailable</HeightMode>
+																<WidthMode>SizeToAvailable</WidthMode>
+																<FormControlExtension>
+																	<Name>HtmlViewerControl</Name>
+																	<ExtensionComponents />
+																	<ExtensionProperties>
+																		<AxFormControlExtensionProperty>
+																			<Name>htmlField</Name>
+																			<Type>String</Type>
+																		</AxFormControlExtensionProperty>
+																	</ExtensionProperties>
+																</FormControlExtension>
+															</AxFormControl>
+														</Controls>
+														<ColumnsMode>Fill</ColumnsMode>
+														<HideIfEmpty>No</HideIfEmpty>
+													</AxFormControl>
+												</Controls>
+												<ArrangeMethod>Auto</ArrangeMethod>
+												<Columns>2</Columns>
+												<FrameType>None</FrameType>
+											</AxFormControl>
+										</Controls>
+										<FrameType>None</FrameType>
+									</AxFormControl>
+								</Controls>
+								<Columns>2</Columns>
+								<FrameType>None</FrameType>
+							</AxFormControl>
+						</Controls>
+						<Caption>@SYS8811</Caption>
+						<FastTabExpanded>Always</FastTabExpanded>
+					</AxFormControl>
+				</Controls>
+				<Style>FastTabs</Style>
+			</AxFormControl>
+		</Controls>
+	</Design>
+	<Parts />
+</AxForm>

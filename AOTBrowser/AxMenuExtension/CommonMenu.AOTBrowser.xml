@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxMenuExtension xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="Microsoft.Dynamics.AX.Metadata.V1">
+	<Name>CommonMenu.AOTBrowser</Name>
+	<Customizations />
+	<Elements>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Common</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBAOTBrowser</Name>
+				<MenuItemName>ARBAOTBrowser</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<PositionType>Begin</PositionType>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementSubMenu">
+				<Name>Workspaces</Name>
+				<Label>@SYS:Platform_Menu_ColHeading_Workspaces</Label>
+				<Elements>
+					<AxMenuElement xmlns=""
+						i:type="AxMenuElementTile">
+						<Name>ARBAOTBrowserTile</Name>
+						<Tile>ARBAOTBrowserTile</Tile>
+					</AxMenuElement>
+				</Elements>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Inquiries</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBEntityFields</Name>
+				<MenuItemName>ARBEntityFields</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Inquiries</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBMenuItemReferences</Name>
+				<MenuItemName>ARBMenuItemReferences</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Inquiries</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBTableMetadata</Name>
+				<MenuItemName>ARBTableMetadata</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Periodic</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBTableMetadataPopulate</Name>
+				<MenuItemName>ARBTableMetadataPopulate</MenuItemName>
+				<MenuItemType>Action</MenuItemType>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Inquiries</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBEnumMetadata</Name>
+				<MenuItemName>ARBEnumMetadata</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+	</Elements>
+	<MenuElementModifications />
+	<PropertyModifications />
+</AxMenuExtension>

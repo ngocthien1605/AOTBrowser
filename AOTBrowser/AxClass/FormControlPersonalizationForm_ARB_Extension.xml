@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>FormControlPersonalizationForm_ARB_Extension</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Extension of the FormControlPersonalization form to enable AOT Browser entity fields and menu item reference panels.
+/// </summary>
+[ExtensionOf(formStr(FormControlPersonalization))]
+final class FormControlPersonalizationForm_ARB_Extension
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>init</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Initializes the form and shows entity field or menu item reference panels based on the calling control.
+    /// </summary>
+    public void init()
+    {
+        next init();
+
+        if (this.args().parmObject() is FormControl)
+        {
+            FormControl callerFormControl = this.args().parmObject() as FormControl;
+            if (callerFormControl)
+            {
+                FieldBinding fieldBinding = callerFormControl.fieldBinding();
+                if (fieldBinding != null && fieldBinding.fieldName())
+                {
+                    ARBEntityFields.visible(true);
+                }
+
+                if (callerFormControl is FormFunctionButtonControl)
+                {
+                    FormFunctionButtonControl menuItemButton = callerFormControl as FormFunctionButtonControl;
+                    if (menuItemButton.menuItemName())
+                    {
+                        ARBMenuItemReferences.visible(true);
+                    }
+                }
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

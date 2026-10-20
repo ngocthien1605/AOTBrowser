@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxSecurityDuty xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTBrowserMaintain</Name>
+	<Label>@AOTBrowser:AOTBrowserMaintain</Label>
+	<Privileges>
+		<AxSecurityPrivilegeReference>
+			<Name>ARBAOTBrowserMaintain</Name>
+		</AxSecurityPrivilegeReference>
+		<AxSecurityPrivilegeReference>
+			<Name>ARBTableMetadataEntityView</Name>
+		</AxSecurityPrivilegeReference>
+		<AxSecurityPrivilegeReference>
+			<Name>ARBTableMetadataEntityMaintain</Name>
+		</AxSecurityPrivilegeReference>
+	</Privileges>
+</AxSecurityDuty>
