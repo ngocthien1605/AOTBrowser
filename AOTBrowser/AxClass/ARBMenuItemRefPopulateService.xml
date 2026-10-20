@@ -21,6 +21,7 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
     ARBAOTObjectType currentObjectType;
     int insertCount;
     Map menuItemLabelCache = new Map(Types::String, Types::String);
+    ARBAOTPopulateLog log = ARBAOTPopulateLog::construct();
 
 }
 ]]></Declaration>
@@ -44,8 +45,11 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             throw error("@SYS135884"); // Unable to initialize metadata provider
         }
         
+        // The delete runs in its own transaction. Objects are processed outside a transaction so that a
+        // failing object can be caught, logged and skipped instead of rolling back the whole run.
         ttsbegin;
         delete_from menuItemRefs;
+        ttscommit;
 
         // Forms
         this.processForms();
@@ -87,7 +91,7 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
         this.processKPIs();
 
         menuItemRefsInsertList.insertDatabase();
-        ttscommit;
+        log.summary();
     }
 
 ]]></Source>
@@ -102,15 +106,8 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
     /// <returns>The resolved label string, or an empty string if no Label property exists.</returns>
     protected str getLabelForObject(anytype _object)
     {
-        System.Type objectType = _object.GetType();
-        PropertyInfo labelProp = objectType.GetProperty('Label');
+        return ARBAOTBrowserHelper::labelText(_object);
 
-        if (labelProp)
-        {
-            return SysLabel::labelId2String(labelProp.GetValue(_object).ToString());
-        }
-
-        return '';
     }
 
 ]]></Source>
@@ -133,10 +130,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = workflowType.Name;
-            currentObjectLabel = this.getLabelForObject(workflowType);
+            try
+            {
+                currentObjectName = workflowType.Name;
+                currentObjectLabel = this.getLabelForObject(workflowType);
 
-            this.processWorkflowType(workflowType, '');
+                this.processWorkflowType(workflowType, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -205,10 +213,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = kpi.Name;
-            currentObjectLabel = this.getLabelForObject(kpi);
+            try
+            {
+                currentObjectName = kpi.Name;
+                currentObjectLabel = this.getLabelForObject(kpi);
 
-            this.processKPI(kpi, '');
+                this.processKPI(kpi, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -262,10 +281,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = map.Name;
-            currentObjectLabel = this.getLabelForObject(map);
+            try
+            {
+                currentObjectName = map.Name;
+                currentObjectLabel = this.getLabelForObject(map);
 
-            this.processMap(map, '');
+                this.processMap(map, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -308,10 +338,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = compositeDataEntity.Name;
-            currentObjectLabel = this.getLabelForObject(compositeDataEntity);
+            try
+            {
+                currentObjectName = compositeDataEntity.Name;
+                currentObjectLabel = this.getLabelForObject(compositeDataEntity);
 
-            this.processCompositeDataEntity(compositeDataEntity, '');
+                this.processCompositeDataEntity(compositeDataEntity, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -354,10 +395,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = view.Name;
-            currentObjectLabel = this.getLabelForObject(view);
+            try
+            {
+                currentObjectName = view.Name;
+                currentObjectLabel = this.getLabelForObject(view);
 
-            this.processView(view, '');
+                this.processView(view, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -400,10 +452,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = dataEntity.Name;
-            currentObjectLabel = this.getLabelForObject(dataEntity);
+            try
+            {
+                currentObjectName = dataEntity.Name;
+                currentObjectLabel = this.getLabelForObject(dataEntity);
 
-            this.processDataEntityView(dataEntity, '');
+                this.processDataEntityView(dataEntity, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -446,10 +509,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = table.Name;
-            currentObjectLabel = this.getLabelForObject(table);
+            try
+            {
+                currentObjectName = table.Name;
+                currentObjectLabel = this.getLabelForObject(table);
 
-            this.processTable(table, '');
+                this.processTable(table, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -508,10 +582,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = workflowTask.Name;
-            currentObjectLabel = this.getLabelForObject(workflowTask);
+            try
+            {
+                currentObjectName = workflowTask.Name;
+                currentObjectLabel = this.getLabelForObject(workflowTask);
 
-            this.processWorkflowTask(workflowTask, '');
+                this.processWorkflowTask(workflowTask, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -576,10 +661,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = securityPrivilege.Name;
-            currentObjectLabel = this.getLabelForObject(securityPrivilege);
+            try
+            {
+                currentObjectName = securityPrivilege.Name;
+                currentObjectLabel = this.getLabelForObject(securityPrivilege);
 
-            this.processSecurityPrivilege(securityPrivilege, '');
+                this.processSecurityPrivilege(securityPrivilege, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -604,6 +700,7 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             if (entryPoint.ObjectName)
             {
                 MenuItemType menuItemType;
+                boolean isMenuItem = true;
                 switch (entryPoint.ObjectType)
                 {
                     case EntryPointType::MenuItemAction:
@@ -617,8 +714,17 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
                     case EntryPointType::MenuItemOutput:
                         menuItemType = MenuItemType::Output;
                         break;
+
+                    default:
+                        // Service operations and other entry points are not menu items.
+                        isMenuItem = false;
+                        break;
                 }
-                this.addMenuItemReference(entryPoint.ObjectName, menuItemType, 'EntryPoints/' + entryPoint.Name);
+
+                if (isMenuItem)
+                {
+                    this.addMenuItemReference(entryPoint.ObjectName, menuItemType, 'EntryPoints/' + entryPoint.Name);
+                }
             }
         }
     }
@@ -643,10 +749,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = workflowApproval.Name;
-            currentObjectLabel = this.getLabelForObject(workflowApproval);
+            try
+            {
+                currentObjectName = workflowApproval.Name;
+                currentObjectLabel = this.getLabelForObject(workflowApproval);
 
-            this.processWorkflowApproval(workflowApproval, '');
+                this.processWorkflowApproval(workflowApproval, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -785,10 +902,21 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = tile.Name;
-            currentObjectLabel = this.getLabelForObject(tile);
+            try
+            {
+                currentObjectName = tile.Name;
+                currentObjectLabel = this.getLabelForObject(tile);
 
-            this.processTile(tile, '');
+                this.processTile(tile, '');
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
         }
     }
 
@@ -831,15 +959,26 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             {
                 continue;
             }
-            currentObjectName = menu.Name;
-            currentObjectLabel = this.getLabelForObject(menu);
-
-            var menuElementsEnum = menu.Elements.GetEnumerator();
-            while (menuElementsEnum.MoveNext())
+            try
             {
-                AxMenuElement menuElement = menuElementsEnum.Current;
-                
-                this.processMenuElement(menuElement, '');
+                currentObjectName = menu.Name;
+                currentObjectLabel = this.getLabelForObject(menu);
+
+                var menuElementsEnum = menu.Elements.GetEnumerator();
+                while (menuElementsEnum.MoveNext())
+                {
+                    AxMenuElement menuElement = menuElementsEnum.Current;
+
+                    this.processMenuElement(menuElement, '');
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
             }
         }
     }
@@ -889,6 +1028,10 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
         if (elementsProp != null)
         {
             System.Collections.IEnumerable elements = elementsProp.GetValue(_menuElement) as System.Collections.IEnumerable;
+            if (CLRInterop::isNull(elements))
+            {
+                return;
+            }
             var elementsEnum = elements.GetEnumerator();
             while (elementsEnum.MoveNext())
             {
@@ -915,7 +1058,9 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
         var formNamesEnum = Xpp.MetadataSupport::FormNames();
         while (formNamesEnum.MoveNext())
         {
-            //AxForm form = Xpp.MetadataSupport::GetForm(formNamesEnum.Current);
+            currentObjectName = formNamesEnum.Current;
+            try
+            {
             AxForm form = metadataProvider.Forms.Read(formNamesEnum.Current);
             if (form == null || form.Design == null)
             {
@@ -923,7 +1068,7 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
             }
             currentObjectName = form.Name;
             currentObjectLabel = this.getLabelForObject(form);
-            
+
             var formControls = form.Design.Controls;
             var controlsEnum = formControls.GetEnumerator();
             while (controlsEnum.MoveNext())
@@ -944,6 +1089,15 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
                 
                     this.processFormControl(formExtensionControl.FormControl, 'Extensions/' + formExtension.Name + '/Controls/' + formExtensionControl.Name + '/FormControl');
                 }
+            }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(currentObjectType), currentObjectName);
             }
         }
     }
@@ -1013,6 +1167,10 @@ class ARBMenuItemRefPopulateService extends SysOperationServiceBase
         if (controlsProp != null)
         {
             System.Collections.IEnumerable controls = controlsProp.GetValue(_formControl) as System.Collections.IEnumerable;
+            if (CLRInterop::isNull(controls))
+            {
+                return;
+            }
             var controlsEnum = controls.GetEnumerator();
             while (controlsEnum.MoveNext())
             {

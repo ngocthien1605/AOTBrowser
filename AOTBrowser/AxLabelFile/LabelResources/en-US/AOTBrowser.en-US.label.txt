@@ -1,4 +1,4 @@
-﻿AggregateDataEntity=Aggregate data entity
+AggregateDataEntity=Aggregate data entity
  ;ARB_AOTBrowser
 AOTBrowser=AOT browser
  ;ARB_AOTBrowser
@@ -189,4 +189,14 @@ WorkflowQueueAssignmentProvider=Workflow queue assignment provider
 WorkflowTask=Workflow task
  ;ARB_AOTBrowser
 WorkflowType=Workflow type
+ ;ARB_AOTBrowser
+AOTBrowserAdmin=AOT browser administrator
+ ;ARB_AOTBrowser
+AOTBrowserInquire=Inquire into AOT browser
+ ;ARB_AOTBrowser
+AOTBrowserView=View AOT browser
+ ;ARB_AOTBrowser
+PopulateObjectSkipped=%1 %2 was skipped because its metadata could not be read: %3
+ ;ARB_AOTBrowser
+PopulateObjectsSkippedSummary=%1 objects were skipped because their metadata could not be read. The rest of the index was updated.
  ;ARB_AOTBrowser

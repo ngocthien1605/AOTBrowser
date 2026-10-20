@@ -5,25 +5,7 @@
 	<DataEntityPermissions />
 	<DirectAccessPermissions />
 	<EntryPoints>
-		<AxSecurityEntryPointReference>
-			<Name>ARBAOTBrowser</Name>
-			<Grant>
-				<Correct>Allow</Correct>
-				<Create>Allow</Create>
-				<Delete>Allow</Delete>
-				<Read>Allow</Read>
-				<Update>Allow</Update>
-			</Grant>
-			<ObjectName>ARBAOTBrowser</ObjectName>
-			<ObjectType>MenuItemDisplay</ObjectType>
-			<Forms>
-				<AxSecurityEntryPointReferenceForm>
-					<Name>ARBAOTBrowser</Name>
-					<Controls />
-					<DataSources />
-				</AxSecurityEntryPointReferenceForm>
-			</Forms>
-		</AxSecurityEntryPointReference>
+		
 		<AxSecurityEntryPointReference>
 			<Name>ARBAOTObjectPopulate</Name>
 			<Grant>
@@ -63,34 +45,8 @@
 			<ObjectType>MenuItemAction</ObjectType>
 			<Forms />
 		</AxSecurityEntryPointReference>
-		<AxSecurityEntryPointReference>
-			<Name>ARBTableMetadataDisplay</Name>
-			<Grant>
-				<Correct>Allow</Correct>
-				<Create>Allow</Create>
-				<Delete>Allow</Delete>
-				<Invoke>Allow</Invoke>
-				<Read>Allow</Read>
-				<Update>Allow</Update>
-			</Grant>
-			<ObjectName>ARBTableMetadata</ObjectName>
-			<ObjectType>MenuItemDisplay</ObjectType>
-			<Forms />
-		</AxSecurityEntryPointReference>
-		<AxSecurityEntryPointReference>
-			<Name>ARBEnumMetadataDisplay</Name>
-			<Grant>
-				<Correct>Allow</Correct>
-				<Create>Allow</Create>
-				<Delete>Allow</Delete>
-				<Invoke>Allow</Invoke>
-				<Read>Allow</Read>
-				<Update>Allow</Update>
-			</Grant>
-			<ObjectName>ARBEnumMetadata</ObjectName>
-			<ObjectType>MenuItemDisplay</ObjectType>
-			<Forms />
-		</AxSecurityEntryPointReference>
+		
+		
 		<AxSecurityEntryPointReference>
 			<Name>ARBTableMetadataPopulateAction</Name>
 			<Grant>
@@ -105,32 +61,8 @@
 			<ObjectType>MenuItemAction</ObjectType>
 			<Forms />
 		</AxSecurityEntryPointReference>
-		<AxSecurityEntryPointReference>
-			<Name>ARBEntityFields</Name>
-			<Grant>
-				<Correct>Allow</Correct>
-				<Create>Allow</Create>
-				<Delete>Allow</Delete>
-				<Read>Allow</Read>
-				<Update>Allow</Update>
-			</Grant>
-			<ObjectName>ARBEntityFields</ObjectName>
-			<ObjectType>MenuItemDisplay</ObjectType>
-			<Forms />
-		</AxSecurityEntryPointReference>
-		<AxSecurityEntryPointReference>
-			<Name>ARBMenuItemReferences</Name>
-			<Grant>
-				<Correct>Allow</Correct>
-				<Create>Allow</Create>
-				<Delete>Allow</Delete>
-				<Read>Allow</Read>
-				<Update>Allow</Update>
-			</Grant>
-			<ObjectName>ARBMenuItemReferences</ObjectName>
-			<ObjectType>MenuItemDisplay</ObjectType>
-			<Forms />
-		</AxSecurityEntryPointReference>
+		
+		
 	</EntryPoints>
 	<FormControlOverrides />
 </AxSecurityPrivilege>

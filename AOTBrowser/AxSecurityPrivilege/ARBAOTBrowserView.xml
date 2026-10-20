@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxSecurityPrivilege xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTBrowserView</Name>
+	<Label>@AOTBrowser:AOTBrowserView</Label>
+	<DataEntityPermissions />
+	<DirectAccessPermissions />
+	<EntryPoints>
+		<AxSecurityEntryPointReference>
+			<Name>ARBAOTBrowser</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBAOTBrowser</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
+		<AxSecurityEntryPointReference>
+			<Name>ARBTableMetadata</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBTableMetadata</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
+		<AxSecurityEntryPointReference>
+			<Name>ARBEnumMetadata</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBEnumMetadata</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
+		<AxSecurityEntryPointReference>
+			<Name>ARBEntityFields</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBEntityFields</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
+		<AxSecurityEntryPointReference>
+			<Name>ARBMenuItemReferences</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBMenuItemReferences</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
+	</EntryPoints>
+	<FormControlOverrides />
+</AxSecurityPrivilege>

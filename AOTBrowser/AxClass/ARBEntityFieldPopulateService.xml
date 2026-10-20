@@ -27,18 +27,39 @@ class ARBEntityFieldPopulateService extends SysOperationServiceBase
     /// </summary>
     public void populateEntityFields()
     {
+        ARBAOTPopulateLog log = ARBAOTPopulateLog::construct();
+
+        // The delete runs in its own transaction. Entities are processed outside a transaction so that a
+        // failing entity can be caught, logged and skipped instead of rolling back the whole run.
         ttsbegin;
         delete_from entityFields;
+        ttscommit;
 
         var dataEntityList = Xpp.MetadataSupport::GetDataModelElements(false,false,true,false,false).GetEnumerator();
 
         while (dataEntityList.MoveNext())
         {
-            AxDataEntityView dataEntityView = Xpp.MetadataSupport::GetDataEntityView(dataEntityList.Current);
-            this.processFields(dataEntityView.Name, SysLabel::labelId2String2(dataEntityView.Label), dataEntityView.Fields, dataEntityView.ViewMetadata.DataSources);
+            str entityName = dataEntityList.Current;
+            try
+            {
+                AxDataEntityView dataEntityView = Xpp.MetadataSupport::GetDataEntityView(entityName);
+                if (dataEntityView == null || dataEntityView.ViewMetadata == null)
+                {
+                    continue;
+                }
+                this.processFields(dataEntityView.Name, SysLabel::labelId2String2(dataEntityView.Label), dataEntityView.Fields, dataEntityView.ViewMetadata.DataSources);
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::DataEntity), entityName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::DataEntity), entityName);
+            }
         }
         entityFieldsInsertList.insertDatabase();
-        ttscommit;
+        log.summary();
     }
 
 ]]></Source>
@@ -64,6 +85,7 @@ class ARBEntityFieldPopulateService extends SysOperationServiceBase
             AxDataEntityViewMappedField mappedField = field as AxDataEntityViewMappedField;
             if (mappedField != null)
             {
+                entityFields.clear();
                 System.Type t = mappedField.GetType();
                 PropertyInfo labelProperty = t.GetProperty('Label');
                 entityFields.EntityFieldName = mappedField.Name;
@@ -183,7 +205,12 @@ class ARBEntityFieldPopulateService extends SysOperationServiceBase
     /// <returns>The resolved label text, or an empty string if no label is found.</returns>
     protected str getLabelValue(PropertyInfo _property, anytype _object)
     {
-        str value = SysLabel::labelId2String(_property.GetValue(_object).ToString());
+        if (CLRInterop::isNull(_property))
+        {
+            return '';
+        }
+
+        str value = ARBAOTBrowserHelper::propertyLabelText(_property, _object);
 
         if (value == '')
         {

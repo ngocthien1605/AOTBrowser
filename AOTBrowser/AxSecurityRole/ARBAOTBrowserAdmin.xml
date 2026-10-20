@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxSecurityRole xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTBrowserAdmin</Name>
+	<Label>@AOTBrowser:AOTBrowserAdmin</Label>
+	<DirectAccessPermissions />
+	<Duties>
+		<AxSecurityDutyReference>
+			<Name>ARBAOTBrowserInquire</Name>
+		</AxSecurityDutyReference>
+		<AxSecurityDutyReference>
+			<Name>ARBAOTBrowserMaintain</Name>
+		</AxSecurityDutyReference>
+	</Duties>
+	<Privileges />
+	<SubRoles />
+</AxSecurityRole>

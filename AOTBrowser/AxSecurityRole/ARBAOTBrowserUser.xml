@@ -5,7 +5,7 @@
 	<DirectAccessPermissions />
 	<Duties>
 		<AxSecurityDutyReference>
-			<Name>ARBAOTBrowserMaintain</Name>
+			<Name>ARBAOTBrowserInquire</Name>
 		</AxSecurityDutyReference>
 	</Duties>
 	<Privileges />

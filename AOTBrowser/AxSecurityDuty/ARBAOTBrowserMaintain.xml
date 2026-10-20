@@ -7,9 +7,6 @@
 			<Name>ARBAOTBrowserMaintain</Name>
 		</AxSecurityPrivilegeReference>
 		<AxSecurityPrivilegeReference>
-			<Name>ARBTableMetadataEntityView</Name>
-		</AxSecurityPrivilegeReference>
-		<AxSecurityPrivilegeReference>
 			<Name>ARBTableMetadataEntityMaintain</Name>
 		</AxSecurityPrivilegeReference>
 	</Privileges>

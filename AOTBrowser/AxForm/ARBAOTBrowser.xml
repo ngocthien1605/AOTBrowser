@@ -405,7 +405,9 @@ public class ARBAOTBrowser extends FormRun
         aotObjectTree.update(_aotNodeName);
         this.buildSearchTreeItems();
         DetailsTab.caption(_aotNodeName + ' - ' + enum2Str(_objectType));
-        ARBOpenTableBrowser.enabled(tableBrowserEnabled);
+        // The table browser shows table data, so it follows the standard SysTableBrowser permission.
+        ARBOpenTableBrowser.enabled(tableBrowserEnabled
+            && hasMenuItemAccess(menuItemDisplayStr(SysTableBrowser), MenuItemType::Display));
         ARBMenuItemReferences.enabled(menuItemRefEnabled);
         CopyLinkButton.enabled(currentObjectName != '');
     }
@@ -474,7 +476,7 @@ public class ARBAOTBrowser extends FormRun
             System.Type t = objectLocal.GetType();
             PropertyInfo nameProp = t.GetProperty(ARBAOTBrowserConstants::Name);
             str name;
-            if (nameProp != null)
+            if (nameProp != null && !CLRInterop::isNull(nameProp.GetValue(objectLocal)))
             {
                 name = nameProp.GetValue(objectLocal).ToString();
             }
@@ -633,9 +635,13 @@ public class ARBAOTBrowser extends FormRun
                         while (propModsEnum.MoveNext())
                         {
                             AxPropertyModification propMod = propModsEnum.Current;
-                            int arrayNum = propMap.lookup(propMod.Name);
-                            ARBAOTObjectPropertiesMatrix.Property[arrayNum] = propMod.Value;
-                            ARBAOTObjectPropertiesMatrix.PropertyModified[arrayNum] = NoYes::Yes;
+                            // A modified property can be missing from the grid (for example beyond the column cap).
+                            if (propMap.exists(propMod.Name))
+                            {
+                                int arrayNum = propMap.lookup(propMod.Name);
+                                ARBAOTObjectPropertiesMatrix.Property[arrayNum] = propMod.Value;
+                                ARBAOTObjectPropertiesMatrix.PropertyModified[arrayNum] = NoYes::Yes;
+                            }
                         }
                         ARBAOTObjectPropertiesMatrix.update();
                         ttscommit;
@@ -976,7 +982,7 @@ public class ARBAOTBrowser extends FormRun
                 || _property.Name == ARBAOTBrowserConstants::HelpText
                 || _property.Name == ARBAOTBrowserConstants::DeveloperDocumentation
                 || _property.Name == ARBAOTBrowserConstants::EntityRelationshipRole)
-                ? SysLabel::labelId2String(_property.GetValue(_object).ToString())
+                ? ARBAOTBrowserHelper::propertyLabelText(_property, _object)
                 : (_property.GetValue(_object) == null ? '' : _property.GetValue(_object).ToString());
         }
 
@@ -999,12 +1005,12 @@ public class ARBAOTBrowser extends FormRun
     protected str getLabelValue(PropertyInfo _property, anytype _object, int _depth = 0)
     {
         const int maxDepth = 10;
-        if (_depth >= maxDepth)
+        if (_depth >= maxDepth || CLRInterop::isNull(_property))
         {
             return '';
         }
 
-        str value = SysLabel::labelId2String(_property.GetValue(_object).ToString());
+        str value = ARBAOTBrowserHelper::propertyLabelText(_property, _object);
 
         if (value == '')
         {
@@ -1764,7 +1770,7 @@ public class ARBAOTBrowser extends FormRun
                         case ARBAOTObjectType::Form:
                             t = selectedObject.GetType();
                             dataSourceProp = t.GetProperty(ARBAOTBrowserConstants::DataSource);
-                            if (dataSourceProp != null)
+                            if (dataSourceProp != null && !CLRInterop::isNull(dataSourceProp.GetValue(selectedObject)))
                             {
                                 datasourceName = dataSourceProp.GetValue(selectedObject).ToString();
                             }
@@ -1778,7 +1784,7 @@ public class ARBAOTBrowser extends FormRun
                             t = selectedObject.GetType();
                             dataSourceProp = t.GetProperty(ARBAOTBrowserConstants::DataSource);
                             
-                            if (dataSourceProp != null)
+                            if (dataSourceProp != null && !CLRInterop::isNull(dataSourceProp.GetValue(selectedObject)))
                             {
                                 datasourceName = dataSourceProp.GetValue(selectedObject).ToString();
                             }

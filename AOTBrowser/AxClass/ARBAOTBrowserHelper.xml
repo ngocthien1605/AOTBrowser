@@ -317,12 +317,89 @@ public final class ARBAOTBrowserHelper
     {
         Common tableBuffer = DictTable::createRecord(_tableName);
 
-        if (tableBuffer.isTempDb() || tableBuffer.isTmp())
+        if (tableBuffer == null || tableBuffer.isTempDb() || tableBuffer.isTmp())
         {
             return '';
         }
 
         return tableBuffer.getPhysicalTableName();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>labelText</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the resolved text of a label property (for example Label or HelpText) of a metadata object.
+    /// Null-safe: returns an empty string when the object is null, has no such property, or the property is empty.
+    /// </summary>
+    /// <param name="_object">The metadata object.</param>
+    /// <param name="_propertyName">The label property name; defaults to Label.</param>
+    /// <returns>The label text in the current user's language, or an empty string.</returns>
+    public static str labelText(anytype _object, str _propertyName = 'Label')
+    {
+        if (CLRInterop::isNull(_object))
+        {
+            return '';
+        }
+
+        System.Object clrObject = _object;
+        return ARBAOTBrowserHelper::propertyLabelText(clrObject.GetType().GetProperty(_propertyName), _object);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>propertyLabelText</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the resolved text of the label stored in a reflected property of a metadata object.
+    /// Null-safe: returns an empty string when the property is missing or its value is null or empty.
+    /// </summary>
+    /// <param name="_property">The reflected property; may be null.</param>
+    /// <param name="_object">The metadata object.</param>
+    /// <returns>The label text in the current user's language, or an empty string.</returns>
+    public static str propertyLabelText(System.Reflection.PropertyInfo _property, anytype _object)
+    {
+        if (CLRInterop::isNull(_property) || CLRInterop::isNull(_object))
+        {
+            return '';
+        }
+
+        System.Object value = _property.GetValue(_object);
+        if (CLRInterop::isNull(value))
+        {
+            return '';
+        }
+
+        str labelId = value.ToString();
+        return labelId ? SysLabel::labelId2String(labelId) : '';
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lastClrErrorText</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Returns the message of the last CLR exception, including the innermost exception, for logging.
+    /// </summary>
+    /// <returns>The exception message, or an empty string when there is none.</returns>
+    public static str lastClrErrorText()
+    {
+        System.Exception clrException = CLRInterop::getLastException();
+        if (CLRInterop::isNull(clrException))
+        {
+            return '';
+        }
+
+        while (!CLRInterop::isNull(clrException.InnerException))
+        {
+            clrException = clrException.InnerException;
+        }
+
+        return clrException.Message;
     }
 
 ]]></Source>

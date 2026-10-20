@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTPopulateLog</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Collects the objects a populate (index) job had to skip because reading their metadata failed.
+/// Writes the first few as warnings and a summary at the end, so one bad object no longer
+/// stops the whole run and the infolog is not flooded.
+/// </summary>
+public final class ARBAOTPopulateLog
+{
+    const int MaxWarnings = 20;
+    int skippedCount;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>construct</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Creates a new log.
+    /// </summary>
+    /// <returns>A new <c>ARBAOTPopulateLog</c> instance.</returns>
+    public static ARBAOTPopulateLog construct()
+    {
+        return new ARBAOTPopulateLog();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>skip</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Records an object that was skipped. Call from the catch block of the per-object processing.
+    /// </summary>
+    /// <param name="_objectKind">The kind of object, for example Form or Table.</param>
+    /// <param name="_objectName">The object name.</param>
+    public void skip(str _objectKind, str _objectName)
+    {
+        skippedCount++;
+
+        if (skippedCount <= MaxWarnings)
+        {
+            str reason = ARBAOTBrowserHelper::lastClrErrorText();
+            warning(strFmt("@AOTBrowser:PopulateObjectSkipped", _objectKind, _objectName, reason));
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>skippedCount</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the number of skipped objects.
+    /// </summary>
+    /// <returns>The number of skipped objects.</returns>
+    public int skippedCount()
+    {
+        return skippedCount;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>summary</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Writes a summary line when objects were skipped.
+    /// </summary>
+    public void summary()
+    {
+        if (skippedCount)
+        {
+            warning(strFmt("@AOTBrowser:PopulateObjectsSkippedSummary", skippedCount));
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

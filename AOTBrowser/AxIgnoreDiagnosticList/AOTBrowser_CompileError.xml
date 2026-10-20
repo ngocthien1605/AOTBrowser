@@ -3,14 +3,6 @@
 	<Name>AOTBrowser_CompileError</Name>
 	<Items>
 		<Diagnostic>
-			<DiagnosticType>Metadata</DiagnosticType>
-			<Severity>Warning</Severity>
-			<Path>AxTable/ARBMenuItemReferences/Indexes/MenuItemRefIdx/Name</Path>
-			<Moniker>ClusteredIndexMaxSize</Moniker>
-			<Message>Clustered Index Key 'MenuItemRefIdx' should not exceed the maximum size of 900 bytes.</Message>
-			<Justification>Conscious design decision</Justification>
-		</Diagnostic>
-		<Diagnostic>
 			<DiagnosticType>ExternalReference</DiagnosticType>
 			<Severity>Warning</Severity>
 			<Path>dynamics://Reference/Microsoft.Dynamics___vices.PricingEngine</Path>

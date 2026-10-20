@@ -25,6 +25,7 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
     RecordInsertList enumInsertList;
 
     Set processedEnums;
+    ARBAOTPopulateLog log;
 }
 ]]></Declaration>
 		<Methods>
@@ -42,7 +43,10 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
         keyFieldInsertList = new RecordInsertList(tableNum(ARBTableKeyFieldMetadata));
         enumInsertList     = new RecordInsertList(tableNum(ARBEnumMetadata));
         processedEnums     = new Set(Types::String);
+        log                = ARBAOTPopulateLog::construct();
 
+        // The deletes run in their own transaction. Tables and enums are processed outside a transaction
+        // so that a failing object can be caught, logged and skipped instead of rolling back the whole run.
         ttsbegin;
 
         delete_from tableMetadata;
@@ -50,6 +54,8 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
         delete_from relationMetadata;
         delete_from keyFieldMetadata;
         delete_from enumMetadata;
+
+        ttscommit;
 
         this.processTables();
         this.processRemainingEnums();
@@ -60,7 +66,7 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
         keyFieldInsertList.insertDatabase();
         enumInsertList.insertDatabase();
 
-        ttscommit;
+        log.summary();
     }
 
 ]]></Source>
@@ -78,11 +84,22 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
         while (tableList.MoveNext())
         {
             str tableName = tableList.Current;
-            AxTable table = Xpp.MetadataSupport::GetTable(tableName);
-
-            if (table != null)
+            try
             {
-                this.processTable(tableName, table);
+                AxTable table = Xpp.MetadataSupport::GetTable(tableName);
+
+                if (table != null)
+                {
+                    this.processTable(tableName, table);
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Table), tableName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Table), tableName);
             }
         }
     }
@@ -402,7 +419,18 @@ class ARBTableMetadataPopulateService extends SysOperationServiceBase
         while (enumList.MoveNext())
         {
             str enumName = enumList.get_Current();
-            this.ensureEnumProcessed(enumName);
+            try
+            {
+                this.ensureEnumProcessed(enumName);
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::BaseEnum), enumName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::BaseEnum), enumName);
+            }
         }
     }
 

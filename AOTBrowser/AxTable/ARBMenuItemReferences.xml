@@ -19,7 +19,7 @@ public class ARBMenuItemReferences extends common
 	<TitleField1>MenuItemName</TitleField1>
 	<TitleField2>RefObjectName</TitleField2>
 	<AllowRowVersionChangeTracking>Yes</AllowRowVersionChangeTracking>
-	<ClusteredIndex>MenuItemRefIdx</ClusteredIndex>
+	<ClusteredIndex>RecId</ClusteredIndex>
 	<SaveDataPerCompany>No</SaveDataPerCompany>
 	<DeleteActions />
 	<FieldGroups>
