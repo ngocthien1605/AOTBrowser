@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Base class of the detail panels shown on the AOT browser for the selected object
+/// (Extensions, Security, Where used, Hierarchy, Runtime, Labels).
+/// A subclass is marked with <c>ARBAOTDetailPanelAttribute</c>, says which object types it
+/// supports, and adds lines with <c>addLine</c> in <c>populate</c>.
+/// </summary>
+public abstract class ARBAOTDetailPanelProvider
+{
+    ARBAOTDetailLine lines;
+    int lineNum;
+    ARBAOTDetailPanel panel;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>construct</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Finds the provider of a detail panel.
+    /// </summary>
+    /// <param name = "_panel">The detail panel.</param>
+    /// <returns>The provider, or null when no provider exists for the panel.</returns>
+    public static ARBAOTDetailPanelProvider construct(ARBAOTDetailPanel _panel)
+    {
+        if (_panel == ARBAOTDetailPanel::None)
+        {
+            return null;
+        }
+
+        ARBAOTDetailPanelProvider provider = SysExtensionAppClassFactory::getClassFromSysAttribute(
+            classStr(ARBAOTDetailPanelProvider),
+            new ARBAOTDetailPanelAttribute(_panel));
+
+        if (provider)
+        {
+            provider.parmPanel(_panel);
+        }
+
+        return provider;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>parmPanel</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets or sets the panel this provider fills.
+    /// </summary>
+    /// <param name = "_panel">The panel to set; optional.</param>
+    /// <returns>The panel.</returns>
+    public ARBAOTDetailPanel parmPanel(ARBAOTDetailPanel _panel = panel)
+    {
+        panel = _panel;
+        return panel;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Indicates whether the panel has information for an object type.
+    /// </summary>
+    /// <param name = "_objectType">The object type of the selected object.</param>
+    /// <returns>true when the panel can be filled for the object type; otherwise, false.</returns>
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        return true;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the column captions of the panel grid, in the order Section, Name, Value1 to Value4.
+    /// An empty caption hides the column.
+    /// </summary>
+    /// <returns>A container with up to six captions.</returns>
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:DetailSection", "@AOTBrowser:DetailName", "@AOTBrowser:PropertyValue"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>fill</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Fills the panel lines for the selected object.
+    /// </summary>
+    /// <param name = "_objectType">The object type of the selected object.</param>
+    /// <param name = "_objectName">The name of the selected object.</param>
+    /// <param name = "_aotObject">The metadata object of the selected object; may be null.</param>
+    /// <param name = "_lines">The in-memory panel lines; the provider adds its lines to this data set.</param>
+    public void fill(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject, ARBAOTDetailLine _lines)
+    {
+        lines.setTmpData(_lines);
+        lineNum = 0;
+        this.populate(_objectType, _objectName, _aotObject);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds the panel lines for the selected object with <c>addLine</c>.
+    /// </summary>
+    /// <param name = "_objectType">The object type of the selected object.</param>
+    /// <param name = "_objectName">The name of the selected object.</param>
+    /// <param name = "_aotObject">The metadata object of the selected object; may be null.</param>
+    protected abstract void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addLine</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one line to the panel.
+    /// </summary>
+    /// <param name = "_section">The group the line belongs to.</param>
+    /// <param name = "_name">The main text of the line.</param>
+    /// <param name = "_value1">The first value column; optional.</param>
+    /// <param name = "_value2">The second value column; optional.</param>
+    /// <param name = "_value3">The third value column; optional.</param>
+    /// <param name = "_value4">The fourth value column; optional.</param>
+    /// <param name = "_jumpObjectType">The object type to open when the user follows the line; optional.</param>
+    /// <param name = "_jumpObjectName">The object name to open when the user follows the line; optional.</param>
+    protected void addLine(
+        str              _section,
+        str              _name,
+        str              _value1         = '',
+        str              _value2         = '',
+        str              _value3         = '',
+        str              _value4         = '',
+        ARBAOTObjectType _jumpObjectType = ARBAOTObjectType::None,
+        str              _jumpObjectName = '')
+    {
+        lineNum++;
+
+        lines.clear();
+        lines.Panel          = panel;
+        lines.LineNum        = lineNum;
+        lines.Section        = _section;
+        lines.Name           = _name;
+        lines.Value1         = _value1;
+        lines.Value2         = _value2;
+        lines.Value3         = _value3;
+        lines.Value4         = _value4;
+        lines.JumpObjectType = _jumpObjectType;
+        lines.JumpObjectName = _jumpObjectName;
+        lines.insert();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>lineCount</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the number of lines added so far.
+    /// </summary>
+    /// <returns>The number of lines.</returns>
+    public int lineCount()
+    {
+        return lineNum;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

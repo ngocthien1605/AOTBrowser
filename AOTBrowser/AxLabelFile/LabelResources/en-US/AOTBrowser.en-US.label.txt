@@ -200,3 +200,33 @@ PopulateObjectSkipped=%1 %2 was skipped because its metadata could not be read: 
  ;ARB_AOTBrowser
 PopulateObjectsSkippedSummary=%1 objects were skipped because their metadata could not be read. The rest of the index was updated.
  ;ARB_AOTBrowser
+DetailLine=AOT object detail line
+ ;ARB_AOTBrowser
+DetailLineDevDoc=Holds the lines of the detail panel shown for the selected AOT object
+ ;ARB_AOTBrowser
+DetailLineNum=Line number
+ ;ARB_AOTBrowser
+DetailName=Name
+ ;ARB_AOTBrowser
+DetailPanel=Detail panel
+ ;ARB_AOTBrowser
+DetailPanelEmpty=Nothing was found for this object.
+ ;ARB_AOTBrowser
+DetailPanelExtensions=Extensions in code
+ ;ARB_AOTBrowser
+DetailPanelFailed=The information could not be read: %1
+ ;ARB_AOTBrowser
+DetailPanelHierarchy=Hierarchy
+ ;ARB_AOTBrowser
+DetailPanelLabels=Labels
+ ;ARB_AOTBrowser
+DetailPanelNotAvailable=This information is not available for this object type.
+ ;ARB_AOTBrowser
+DetailPanelRuntime=Runtime state
+ ;ARB_AOTBrowser
+DetailPanelSecurity=Security
+ ;ARB_AOTBrowser
+DetailPanelWhereUsed=Where used
+ ;ARB_AOTBrowser
+DetailSection=Section
+ ;ARB_AOTBrowser

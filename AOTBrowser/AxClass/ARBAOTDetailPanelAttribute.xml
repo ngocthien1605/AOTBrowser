@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelAttribute</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Marks a subclass of <c>ARBAOTDetailPanelProvider</c> as the provider of one detail panel.
+/// </summary>
+public class ARBAOTDetailPanelAttribute extends SysAttribute implements SysExtensionIAttribute
+{
+    ARBAOTDetailPanel panel;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>new</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Creates the attribute for a detail panel.
+    /// </summary>
+    /// <param name = "_panel">The detail panel the provider fills.</param>
+    public void new(ARBAOTDetailPanel _panel)
+    {
+        super();
+
+        if (!_panel)
+        {
+            throw error(Error::missingParameter(this));
+        }
+
+        panel = _panel;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>parmCacheKey</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the cache key used by the SysExtension framework.
+    /// </summary>
+    /// <returns>The cache key.</returns>
+    public str parmCacheKey()
+    {
+        return classStr(ARBAOTDetailPanelAttribute) + ';' + int2str(enum2int(panel));
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>useSingleton</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Providers keep per-call state, so a new instance is created every time.
+    /// </summary>
+    /// <returns>Always false.</returns>
+    public boolean useSingleton()
+    {
+        return false;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailLine</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// One line of a detail panel (Extensions, Security, Where used, Hierarchy, Runtime, Labels)
+/// shown for the selected object in the AOT browser. Filled on demand by an
+/// <c>ARBAOTDetailPanelProvider</c>; in memory only.
+/// </summary>
+public class ARBAOTDetailLine extends common
+{
+}
+]]></Declaration>
+		<Methods />
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:DetailLineDevDoc</DeveloperDocumentation>
+	<Label>@AOTBrowser:DetailLine</Label>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>Section</TitleField1>
+	<TitleField2>Name</TitleField2>
+	<ClusteredIndex>LineIdx</ClusteredIndex>
+	<PrimaryIndex>LineIdx</PrimaryIndex>
+	<ReplacementKey>LineIdx</ReplacementKey>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<TableType>InMemory</TableType>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>Section</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>Name</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>Value1</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>Name</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>Panel</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>LineNum</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>Name</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields>
+				<AxTableFieldGroupField>
+					<DataField>Section</DataField>
+				</AxTableFieldGroupField>
+				<AxTableFieldGroupField>
+					<DataField>Name</DataField>
+				</AxTableFieldGroupField>
+			</Fields>
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>Panel</Name>
+			<AllowEdit>No</AllowEdit>
+			<EnumType>ARBAOTDetailPanel</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldInt">
+			<Name>LineNum</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:DetailLineNum</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Section</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>Description</ExtendedDataType>
+			<Label>@AOTBrowser:DetailSection</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Name</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+			<Label>@AOTBrowser:DetailName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Value1</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Value2</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Value3</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Value4</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>JumpObjectType</Name>
+			<AllowEdit>No</AllowEdit>
+			<EnumType>ARBAOTObjectType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>JumpObjectName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>LineIdx</Name>
+			<AlternateKey>Yes</AlternateKey>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>Panel</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>LineNum</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

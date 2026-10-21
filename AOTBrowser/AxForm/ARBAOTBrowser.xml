@@ -32,6 +32,7 @@ public class ARBAOTBrowser extends FormRun
     TreeNodeName currentObjectName;
     anytype selectedObject;
     int maxPropertyIndex;
+    ARBAOTDetailPanel currentDetailPanel;
 
     // Tree search state (Docentric pattern - pre-built index lists)
     List searchNextTreeItems;
@@ -410,6 +411,9 @@ public class ARBAOTBrowser extends FormRun
             && hasMenuItemAccess(menuItemDisplayStr(SysTableBrowser), MenuItemType::Display));
         ARBMenuItemReferences.enabled(menuItemRefEnabled);
         CopyLinkButton.enabled(currentObjectName != '');
+
+        // Refill the detail panel that is open, if any, for the new object.
+        element.fillDetailPanel(currentDetailPanel);
     }
 
 ]]></Source>
@@ -1222,6 +1226,142 @@ public class ARBAOTBrowser extends FormRun
 
 ]]></Source>
 			</Method>
+			<Method>
+				<Name>fillDetailPanel</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Fills the detail panel grid for the selected object, or only clears it for <c>ARBAOTDetailPanel::None</c>.
+    /// </summary>
+    /// <param name = "_panel">The detail panel to fill.</param>
+    public void fillDetailPanel(ARBAOTDetailPanel _panel)
+    {
+        ARBAOTDetailLine lines;
+        lines.setTmpData(ARBAOTDetailLine);
+        delete_from lines;
+
+        currentDetailPanel = _panel;
+
+        if (_panel != ARBAOTDetailPanel::None && currentObjectName)
+        {
+            ARBAOTDetailPanelProvider provider = ARBAOTDetailPanelProvider::construct(_panel);
+            container captions = ["@AOTBrowser:DetailSection", "@AOTBrowser:DetailName"];
+
+            if (provider && provider.supports(currentObjectType))
+            {
+                captions = provider.columnLabels();
+                try
+                {
+                    anytype aotObject;
+                    if (aotObjectTree)
+                    {
+                        aotObject = aotObjectTree.getAOTObject(currentObjectName);
+                    }
+                    provider.fill(currentObjectType, currentObjectName, aotObject, ARBAOTDetailLine);
+
+                    if (!provider.lineCount())
+                    {
+                        element.addDetailMessage(_panel, "@AOTBrowser:DetailPanelEmpty");
+                    }
+                }
+                catch (Exception::CLRError)
+                {
+                    element.addDetailMessage(_panel, strFmt("@AOTBrowser:DetailPanelFailed", ARBAOTBrowserHelper::lastClrErrorText()));
+                }
+                catch (Exception::Error)
+                {
+                    element.addDetailMessage(_panel, strFmt("@AOTBrowser:DetailPanelFailed", ''));
+                }
+            }
+            else
+            {
+                element.addDetailMessage(_panel, "@AOTBrowser:DetailPanelNotAvailable");
+            }
+
+            element.setDetailColumnLabels(_panel, captions);
+        }
+
+        ARBAOTDetailLine_ds.executeQuery();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addDetailMessage</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds a message line, for example "not available", to a detail panel.
+    /// </summary>
+    /// <param name = "_panel">The detail panel.</param>
+    /// <param name = "_text">The message text.</param>
+    public void addDetailMessage(ARBAOTDetailPanel _panel, str _text)
+    {
+        ARBAOTDetailLine lines;
+        lines.setTmpData(ARBAOTDetailLine);
+
+        select maxof(LineNum) from lines
+            where lines.Panel == _panel;
+
+        int nextLineNum = lines.LineNum + 1;
+
+        lines.clear();
+        lines.Panel   = _panel;
+        lines.LineNum = nextLineNum;
+        lines.Name    = _text;
+        lines.insert();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>setDetailColumnLabels</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Sets the column captions of a detail panel grid; columns without a caption are hidden.
+    /// </summary>
+    /// <param name = "_panel">The detail panel.</param>
+    /// <param name = "_captions">The captions for Section, Name and Value1 to Value4.</param>
+    public void setDetailColumnLabels(ARBAOTDetailPanel _panel, container _captions)
+    {
+        container columns = ['Section', 'Name', 'Value1', 'Value2', 'Value3', 'Value4'];
+        str panelName = enum2Symbol(enumNum(ARBAOTDetailPanel), _panel);
+
+        for (int i = 1; i <= conLen(columns); i++)
+        {
+            FormStringControl column = element.design().controlName(strFmt('Detail%1_%2', panelName, conPeek(columns, i))) as FormStringControl;
+            if (column)
+            {
+                str caption = i <= conLen(_captions) ? conPeek(_captions, i) : '';
+                column.visible(caption != '');
+                if (caption)
+                {
+                    column.label(caption);
+                }
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>jumpToDetailLine</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Opens a new AOT browser on the object the current detail line points to.
+    /// </summary>
+    public void jumpToDetailLine()
+    {
+        if (ARBAOTDetailLine.JumpObjectType != ARBAOTObjectType::None && ARBAOTDetailLine.JumpObjectName)
+        {
+            Args args = new Args();
+            args.parmEnumType(enumNum(ARBAOTObjectType));
+            args.parmEnum(ARBAOTDetailLine.JumpObjectType);
+            args.parm(ARBAOTDetailLine.JumpObjectName);
+            new MenuFunction(menuItemDisplayStr(ARBAOTBrowser), MenuItemType::Display).run(args);
+        }
+    }
+
+]]></Source>
+			</Method>
 		</Methods>
 		<DataSources xmlns="">
 			<DataSource>
@@ -1810,6 +1950,228 @@ public class ARBAOTBrowser extends FormRun
 					</Method>
 				</Methods>
 			</Control>
+			<Control>
+				<Name>DetailsTab</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::None);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabExtensions</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::Extensions);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailExtensions_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabSecurity</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::Security);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailSecurity_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabWhereUsed</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::WhereUsed);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailWhereUsed_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabHierarchy</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::Hierarchy);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailHierarchy_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabRuntime</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::Runtime);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailRuntime_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailTabLabels</Name>
+				<Type>TabPage</Type>
+				<Methods>
+					<Method>
+						<Name>pageActivated</Name>
+						<Source><![CDATA[
+        public void pageActivated()
+        {
+            super();
+
+            element.fillDetailPanel(ARBAOTDetailPanel::Labels);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
+			<Control>
+				<Name>DetailLabels_Name</Name>
+				<Type>String</Type>
+				<Methods>
+					<Method>
+						<Name>jumpRef</Name>
+						<Source><![CDATA[
+        public void jumpRef()
+        {
+            element.jumpToDetailLine();
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
 		</DataControls>
 		<Members xmlns="" />
 	</SourceCode>
@@ -2120,6 +2482,58 @@ public class ARBAOTBrowser extends FormRun
 			<AllowDelete>No</AllowDelete>
 			<AllowEdit>No</AllowEdit>
 			<InsertAtEnd>No</InsertAtEnd>
+			<InsertIfEmpty>No</InsertIfEmpty>
+			<DataSourceLinks />
+			<DerivedDataSources />
+		</AxFormDataSource>
+		<AxFormDataSource xmlns="">
+			<Name>ARBAOTDetailLine</Name>
+			<Table>ARBAOTDetailLine</Table>
+			<Fields>
+				<AxFormDataSourceField>
+					<DataField>JumpObjectName</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>JumpObjectType</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>LineNum</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Name</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Panel</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Partition</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>RecId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Section</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>TableId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Value1</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Value2</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Value3</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Value4</DataField>
+				</AxFormDataSourceField>
+			</Fields>
+			<ReferencedDataSources />
+			<AllowCreate>No</AllowCreate>
+			<AllowDelete>No</AllowDelete>
+			<AllowEdit>No</AllowEdit>
 			<InsertIfEmpty>No</InsertIfEmpty>
 			<DataSourceLinks />
 			<DerivedDataSources />
@@ -2577,6 +2991,474 @@ public class ARBAOTBrowser extends FormRun
 						</Controls>
 						<Caption>@SYS8811</Caption>
 						<FastTabExpanded>Always</FastTabExpanded>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabExtensions</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridExtensions</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailExtensions_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelExtensions</Caption>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabSecurity</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridSecurity</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailSecurity_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelSecurity</Caption>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabWhereUsed</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridWhereUsed</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailWhereUsed_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelWhereUsed</Caption>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabHierarchy</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridHierarchy</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailHierarchy_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelHierarchy</Caption>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabRuntime</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridRuntime</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailRuntime_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelRuntime</Caption>
+					</AxFormControl>
+					<AxFormControl xmlns=""
+						i:type="AxFormTabPageControl">
+						<Name>DetailTabLabels</Name>
+						<Type>TabPage</Type>
+						<FormControlExtension
+							i:nil="true" />
+						<Controls>
+							<AxFormControl xmlns=""
+								i:type="AxFormGridControl">
+								<Name>DetailGridLabels</Name>
+								<HeightMode>SizeToAvailable</HeightMode>
+								<Type>Grid</Type>
+								<WidthMode>SizeToAvailable</WidthMode>
+								<FormControlExtension
+									i:nil="true" />
+								<Controls>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Section</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Section</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Name</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Name</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Value1</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value1</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Value2</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value2</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Value3</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value3</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+									<AxFormControl xmlns=""
+										i:type="AxFormStringControl">
+										<Name>DetailLabels_Value4</Name>
+										<Type>String</Type>
+										<FormControlExtension
+											i:nil="true" />
+										<DataField>Value4</DataField>
+										<DataSource>ARBAOTDetailLine</DataSource>
+									</AxFormControl>
+								</Controls>
+								<DataSource>ARBAOTDetailLine</DataSource>
+								<MultiSelect>No</MultiSelect>
+								<Style>SimpleReadOnly</Style>
+							</AxFormControl>
+						</Controls>
+						<Caption>@AOTBrowser:DetailPanelLabels</Caption>
 					</AxFormControl>
 				</Controls>
 				<Style>FastTabs</Style>
