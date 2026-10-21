@@ -234,3 +234,31 @@ Model=Model
  ;ARB_AOTBrowser
 Package=Package
  ;ARB_AOTBrowser
+CodeExtensionKind=Kind
+ ;ARB_AOTBrowser
+CodeExtensionKindClass=Extension class
+ ;ARB_AOTBrowser
+CodeExtensionKindCoC=Chain of Command
+ ;ARB_AOTBrowser
+CodeExtensionKindHandler=Event handler
+ ;ARB_AOTBrowser
+CodeExtensions=Extensions in code
+ ;ARB_AOTBrowser
+CodeExtensionsDevDoc=Holds the Chain of Command wrappers, event handlers and extension classes of all installed packages
+ ;ARB_AOTBrowser
+CodeExtensionsNotPopulated=The extensions index is empty. Run Populate extensions in code first.
+ ;ARB_AOTBrowser
+EventType=Event
+ ;ARB_AOTBrowser
+ExtensionClassName=Extension or handler class
+ ;ARB_AOTBrowser
+MethodName=Method
+ ;ARB_AOTBrowser
+NestedTarget=Nested element
+ ;ARB_AOTBrowser
+PopulateCodeExtensions=Populate extensions in code
+ ;ARB_AOTBrowser
+TargetName=Target
+ ;ARB_AOTBrowser
+TargetType=Target type
+ ;ARB_AOTBrowser

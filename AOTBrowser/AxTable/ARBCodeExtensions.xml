@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBCodeExtensions</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Index of Chain of Command wrappers, event handler subscriptions and extension classes per target
+/// object, filled by <c>ARBCodeExtensionPopulateService</c>.
+/// </summary>
+public class ARBCodeExtensions extends common
+{
+}
+]]></Declaration>
+		<Methods />
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:CodeExtensionsDevDoc</DeveloperDocumentation>
+	<FormRef>ARBCodeExtensions</FormRef>
+	<Label>@AOTBrowser:CodeExtensions</Label>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>TargetName</TitleField1>
+	<TitleField2>ExtensionClass</TitleField2>
+	<ClusteredIndex>RecId</ClusteredIndex>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields />
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>Kind</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:CodeExtensionKind</Label>
+			<EnumType>ARBCodeExtensionKind</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>TargetType</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:TargetType</Label>
+			<EnumType>ARBAOTObjectType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>TargetName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:TargetName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>NestedTarget</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+			<Label>@AOTBrowser:NestedTarget</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>ExtensionClass</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:ExtensionClassName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Method</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:MethodName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>EventType</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>Name</ExtendedDataType>
+			<Label>@AOTBrowser:EventType</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Package</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>Name</ExtendedDataType>
+			<Label>@AOTBrowser:Package</Label>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>TargetIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>TargetName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>TargetType</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>Kind</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+		<AxTableIndex>
+			<Name>ExtensionClassIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>ExtensionClass</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

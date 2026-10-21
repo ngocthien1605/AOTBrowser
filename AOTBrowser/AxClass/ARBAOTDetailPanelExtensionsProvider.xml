@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelExtensionsProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// "Extensions in code" panel: Chain of Command wrappers, event handlers and extension classes that
+/// target the selected class, table, view, data entity or form. Reads <c>ARBCodeExtensions</c>, filled
+/// by <c>ARBCodeExtensionPopulateService</c>.
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Extensions)]
+class ARBAOTDetailPanelExtensionsProvider extends ARBAOTDetailPanelProvider
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Class:
+            case ARBAOTObjectType::Table:
+            case ARBAOTObjectType::View:
+            case ARBAOTObjectType::DataEntity:
+            case ARBAOTObjectType::Form:
+                return true;
+        }
+
+        return false;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:CodeExtensionKind", "@AOTBrowser:ExtensionClassName", "@AOTBrowser:MethodName", "@AOTBrowser:EventType", "@AOTBrowser:NestedTarget", "@AOTBrowser:Package"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        ARBCodeExtensions codeExtensions;
+
+        select firstonly RecId from codeExtensions
+            where codeExtensions.RecId != 0;
+
+        if (!codeExtensions.RecId)
+        {
+            this.addLine('', "@AOTBrowser:CodeExtensionsNotPopulated");
+            return;
+        }
+
+        while select codeExtensions
+            order by Kind, ExtensionClass, Method
+            where codeExtensions.TargetName == _objectName
+               && codeExtensions.TargetType == _objectType
+        {
+            this.addLine(
+                enum2Str(codeExtensions.Kind),
+                codeExtensions.ExtensionClass,
+                codeExtensions.Method,
+                codeExtensions.EventType,
+                codeExtensions.NestedTarget,
+                codeExtensions.Package,
+                ARBAOTObjectType::Class,
+                codeExtensions.ExtensionClass);
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

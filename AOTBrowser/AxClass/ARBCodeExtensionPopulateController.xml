@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBCodeExtensionPopulateController</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Runs <c>ARBCodeExtensionPopulateService</c>; asynchronous by default because it reads the extension
+/// maps of all installed packages.
+/// </summary>
+class ARBCodeExtensionPopulateController extends SysOperationServiceController
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>new</Name>
+				<Source><![CDATA[
+    protected void new(IdentifierName _className = '', IdentifierName _methodName = '', SysOperationExecutionMode _executionMode = SysOperationExecutionMode::ReliableAsynchronous)
+    {
+        super(classStr(ARBCodeExtensionPopulateService), methodStr(ARBCodeExtensionPopulateService, populateCodeExtensions), _executionMode);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>construct</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Creates a new controller.
+    /// </summary>
+    /// <returns>A new <c>ARBCodeExtensionPopulateController</c>.</returns>
+    public static ARBCodeExtensionPopulateController construct()
+    {
+        return new ARBCodeExtensionPopulateController();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>main</Name>
+				<Source><![CDATA[
+    public static void main(Args _args)
+    {
+        ARBCodeExtensionPopulateController controller = ARBCodeExtensionPopulateController::construct();
+
+        controller.startOperation();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>caption</Name>
+				<Source><![CDATA[
+    public ClassDescription caption()
+    {
+        return "@AOTBrowser:PopulateCodeExtensions";
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>parmDialogCaption</Name>
+				<Source><![CDATA[
+    public LabelType parmDialogCaption(LabelType _dialogCaption = dialogCaption)
+    {
+        // Caption is always overridden to ensure a consistent batch job description
+        return "@AOTBrowser:PopulateCodeExtensions";
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

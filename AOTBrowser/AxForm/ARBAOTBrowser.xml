@@ -1181,6 +1181,14 @@ public class ARBAOTBrowser extends FormRun
                     selectedTreePath = menuItemReference.RefPath;
                     break;
 
+                case formStr(ARBCodeExtensions):
+                    FormDataSource codeExtensionsDatasource = caller.dataSource(formDataSourceStr(ARBCodeExtensions, ARBCodeExtensions)) as FormDataSource;
+                    ARBCodeExtensions codeExtension = codeExtensionsDatasource.cursor();
+
+                    args.parmEnumType(enumNum(ARBAOTObjectType));
+                    args.parmEnum(ARBAOTObjectType::Class);
+                    args.parm(codeExtension.ExtensionClass);
+                    break;
                 case formStr(DefaultDashboard):
                     // If coming from the default dashboard don't filter
                     break;

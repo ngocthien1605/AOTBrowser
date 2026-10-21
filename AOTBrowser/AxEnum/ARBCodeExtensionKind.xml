@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxEnum xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBCodeExtensionKind</Name>
+	<Label>@AOTBrowser:CodeExtensionKind</Label>
+	<EnumValues>
+		<AxEnumValue>
+			<Name>None</Name>
+			<Label>@ApplicationFoundation:EmptyText</Label>
+		</AxEnumValue>
+		<AxEnumValue>
+			<Name>ChainOfCommand</Name>
+			<Label>@AOTBrowser:CodeExtensionKindCoC</Label>
+			<Value>1</Value>
+		</AxEnumValue>
+		<AxEnumValue>
+			<Name>EventHandler</Name>
+			<Label>@AOTBrowser:CodeExtensionKindHandler</Label>
+			<Value>2</Value>
+		</AxEnumValue>
+		<AxEnumValue>
+			<Name>ExtensionClass</Name>
+			<Label>@AOTBrowser:CodeExtensionKindClass</Label>
+			<Value>3</Value>
+		</AxEnumValue>
+	</EnumValues>
+</AxEnum>

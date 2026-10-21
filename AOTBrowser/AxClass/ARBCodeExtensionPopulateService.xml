@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBCodeExtensionPopulateService</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+
+/// <summary>
+/// Fills <c>ARBCodeExtensions</c> with every Chain of Command wrapper, event handler subscription and
+/// extension class in the installed packages. The data comes from the maps the X++ compiler writes next
+/// to each package assembly: Dynamics.AX.Package.ChainOfCommand.xml, .EventHandlersSubscriptions.xml and
+/// .ExtensionsClassTargets.xml. A package without one of these files simply has no such entries.
+/// </summary>
+class ARBCodeExtensionPopulateService extends SysOperationServiceBase
+{
+    ARBCodeExtensions codeExtensions;
+    RecordInsertList  insertList;
+    ARBAOTPopulateLog log;
+    str               currentPackage;
+    Map               elementTypes;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>populateCodeExtensions</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Rebuilds the extensions-in-code index for all installed packages.
+    /// </summary>
+    public void populateCodeExtensions()
+    {
+        insertList   = new RecordInsertList(tableNum(ARBCodeExtensions));
+        log          = ARBAOTPopulateLog::construct();
+        elementTypes = new Map(Types::String, Types::Enum);
+
+        // The delete runs in its own transaction. Packages are processed outside a transaction so that a
+        // failing package can be caught, logged and skipped instead of rolling back the whole run.
+        ttsbegin;
+        delete_from codeExtensions;
+        ttscommit;
+
+        var modulesEnum = Xpp.MetadataSupport::GetInstalledModuleNames().GetEnumerator();
+        while (modulesEnum.MoveNext())
+        {
+            currentPackage = modulesEnum.Current;
+            try
+            {
+                str binFolder = Xpp.MetadataSupport::GetBinDirectoryForModule(currentPackage);
+                if (binFolder)
+                {
+                    this.readChainOfCommand(this.mapFile(binFolder, 'ChainOfCommand'));
+                    this.readEventHandlers(this.mapFile(binFolder, 'EventHandlersSubscriptions'));
+                    this.readExtensionClasses(this.mapFile(binFolder, 'ExtensionsClassTargets'));
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip("@AOTBrowser:Package", currentPackage);
+            }
+            catch (Exception::Error)
+            {
+                log.skip("@AOTBrowser:Package", currentPackage);
+            }
+        }
+
+        insertList.insertDatabase();
+        log.summary();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>mapFile</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the path of one extension map file of the current package.
+    /// </summary>
+    /// <param name = "_binFolder">The bin folder of the package.</param>
+    /// <param name = "_kind">ChainOfCommand, EventHandlersSubscriptions or ExtensionsClassTargets.</param>
+    /// <returns>The full file path.</returns>
+    private str mapFile(str _binFolder, str _kind)
+    {
+        return System.IO.Path::Combine(_binFolder, strFmt('Dynamics.AX.%1.%2.xml', currentPackage, _kind));
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>loadXml</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Loads an extension map file.
+    /// </summary>
+    /// <param name = "_path">The file path.</param>
+    /// <returns>The XML document, or null when the package has no such file.</returns>
+    private System.Xml.XmlDocument loadXml(str _path)
+    {
+        if (!System.IO.File::Exists(_path))
+        {
+            return null;
+        }
+
+        System.Xml.XmlDocument document = new System.Xml.XmlDocument();
+        document.Load(_path);
+        return document;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>readChainOfCommand</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one row per wrapped method from the ChainOfCommand map. Wrappers on form data sources,
+    /// controls and data fields are attached to their root form, with the nested element in NestedTarget.
+    /// </summary>
+    /// <param name = "_path">The file path.</param>
+    private void readChainOfCommand(str _path)
+    {
+        System.Xml.XmlDocument document = this.loadXml(_path);
+        if (document == null)
+        {
+            return;
+        }
+
+        var classesEnum = document.SelectNodes('/ChainOfCommand/ExtensionClass').GetEnumerator();
+        while (classesEnum.MoveNext())
+        {
+            System.Xml.XmlElement classNode = classesEnum.Current;
+            str extensionClass  = classNode.GetAttribute('Name');
+            str target          = this.stripFormPrefix(classNode.GetAttribute('ExtensionTarget'));
+            ARBAOTObjectType targetType = this.targetType(classNode.GetAttribute('ExtensionTargetType'), target);
+
+            var methodsEnum = classNode.SelectNodes('Method').GetEnumerator();
+            while (methodsEnum.MoveNext())
+            {
+                System.Xml.XmlElement methodNode = methodsEnum.Current;
+                str methodName = strReplace(methodNode.InnerText, '$augmentedProxy$', '');
+                ARBAOTObjectType rowTargetType = targetType;
+                str rowTarget = target;
+                str nestedTarget;
+
+                if (methodNode.GetAttribute('IsFormNestedTargetConcept') == 'True')
+                {
+                    rowTargetType = ARBAOTObjectType::Form;
+                    rowTarget     = methodNode.GetAttribute('CoCRootFormName');
+                    nestedTarget  = strFmt('%1 %2', methodNode.GetAttribute('CoCNestedElementKind'), methodNode.GetAttribute('ActualExtensionTarget'));
+                }
+
+                if (methodNode.GetAttribute('IsStatic') == 'True')
+                {
+                    methodName += ' (static)';
+                }
+
+                this.addRow(ARBCodeExtensionKind::ChainOfCommand, rowTargetType, rowTarget, nestedTarget, extensionClass, methodName, '');
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>readEventHandlers</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one row per event handler subscription from the EventHandlersSubscriptions map.
+    /// </summary>
+    /// <param name = "_path">The file path.</param>
+    private void readEventHandlers(str _path)
+    {
+        System.Xml.XmlDocument document = this.loadXml(_path);
+        if (document == null)
+        {
+            return;
+        }
+
+        var subscriptionsEnum = document.SelectNodes('/EventHandlersSubscriptions/HandlerSubscription').GetEnumerator();
+        while (subscriptionsEnum.MoveNext())
+        {
+            System.Xml.XmlElement node = subscriptionsEnum.Current;
+            str targetElement = node.GetAttribute('TargetElement');
+            str target = this.stripFormPrefix(targetElement);
+            ARBAOTObjectType targetType = strStartsWith(targetElement, 'Form.') ? ARBAOTObjectType::Form : this.elementType(target);
+
+            this.addRow(
+                ARBCodeExtensionKind::EventHandler,
+                targetType,
+                target,
+                node.GetAttribute('SubscriberNestedElement'),
+                node.GetAttribute('SubscriberElement'),
+                node.GetAttribute('SubscriberMethod'),
+                this.eventTypeName(node.GetAttribute('EventHandlerType')));
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>readExtensionClasses</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one row per extension class from the ExtensionsClassTargets map, including extension
+    /// classes that wrap no method.
+    /// </summary>
+    /// <param name = "_path">The file path.</param>
+    private void readExtensionClasses(str _path)
+    {
+        System.Xml.XmlDocument document = this.loadXml(_path);
+        if (document == null)
+        {
+            return;
+        }
+
+        var classesEnum = document.SelectNodes('/ExtensionClasses/ExtensionClass').GetEnumerator();
+        while (classesEnum.MoveNext())
+        {
+            System.Xml.XmlElement node = classesEnum.Current;
+            str typeId = node.GetAttribute('ExtensionTargetTypeId');
+            str target = this.stripFormPrefix(node.GetAttribute('ExtensionTargetName'));
+            str nestedTarget = node.GetAttribute('ExtensionNestedTargetName');
+
+            if (nestedTarget)
+            {
+                nestedTarget = strFmt('%1 %2', strReplace(typeId, 'TypeId', ''), nestedTarget);
+            }
+
+            this.addRow(ARBCodeExtensionKind::ExtensionClass, this.targetType(typeId, target), target, nestedTarget, node.GetAttribute('ExtensionClassName'), '', '');
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addRow</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one row to the insert list.
+    /// </summary>
+    private void addRow(
+        ARBCodeExtensionKind _kind,
+        ARBAOTObjectType     _targetType,
+        str                  _targetName,
+        str                  _nestedTarget,
+        str                  _extensionClass,
+        str                  _method,
+        str                  _eventType)
+    {
+        codeExtensions.clear();
+        codeExtensions.Kind           = _kind;
+        codeExtensions.TargetType     = _targetType;
+        codeExtensions.TargetName     = _targetName;
+        codeExtensions.NestedTarget   = _nestedTarget;
+        codeExtensions.ExtensionClass = _extensionClass;
+        codeExtensions.Method         = _method;
+        codeExtensions.EventType      = _eventType;
+        codeExtensions.Package        = currentPackage;
+        insertList.add(codeExtensions);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>stripFormPrefix</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Removes the "Form." prefix the maps use for form targets.
+    /// </summary>
+    private str stripFormPrefix(str _name)
+    {
+        return strStartsWith(_name, 'Form.') ? subStr(_name, 6, strLen(_name) - 5) : _name;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>targetType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Maps a target type id of the maps (ClassTypeId, TableTypeId, FormTypeId, FormDataSource...) to an object type.
+    /// Table targets are resolved further, because data entities and views are extended as tables.
+    /// </summary>
+    private ARBAOTObjectType targetType(str _typeId, str _name)
+    {
+        switch (_typeId)
+        {
+            case 'ClassTypeId':
+                return ARBAOTObjectType::Class;
+
+            case 'TableTypeId':
+                return this.elementType(_name);
+
+            case 'FormTypeId':
+                return ARBAOTObjectType::Form;
+        }
+
+        if (strStartsWith(_typeId, 'Form'))
+        {
+            return ARBAOTObjectType::Form;
+        }
+
+        return ARBAOTObjectType::None;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>elementType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves whether a name is a class, data entity, view or table (cached).
+    /// </summary>
+    private ARBAOTObjectType elementType(str _name)
+    {
+        if (elementTypes.exists(_name))
+        {
+            return elementTypes.lookup(_name);
+        }
+
+        ARBAOTObjectType objectType = ARBAOTObjectType::None;
+        try
+        {
+            if (className2Id(_name))
+            {
+                objectType = ARBAOTObjectType::Class;
+            }
+            else if (Xpp.MetadataSupport::GetDataEntityView(_name) != null)
+            {
+                objectType = ARBAOTObjectType::DataEntity;
+            }
+            else if (Xpp.MetadataSupport::GetView(_name) != null)
+            {
+                objectType = ARBAOTObjectType::View;
+            }
+            else if (tableName2Id(_name))
+            {
+                objectType = ARBAOTObjectType::Table;
+            }
+        }
+        catch (Exception::CLRError)
+        {
+            objectType = tableName2Id(_name) ? ARBAOTObjectType::Table : ARBAOTObjectType::None;
+        }
+
+        elementTypes.insert(_name, objectType);
+        return objectType;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>eventTypeName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Shortens the event handler type of the subscription map for display.
+    /// </summary>
+    private str eventTypeName(str _eventHandlerType)
+    {
+        switch (_eventHandlerType)
+        {
+            case 'DelegateTypeId':
+                return 'Delegate';
+
+            case 'PreDelegateTypeId':
+                return 'Pre';
+
+            case 'PostDelegateTypeId':
+                return 'Post';
+        }
+
+        return _eventHandlerType;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

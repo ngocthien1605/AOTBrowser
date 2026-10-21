@@ -50,6 +50,15 @@
 			<ObjectType>MenuItemDisplay</ObjectType>
 			<Forms />
 		</AxSecurityEntryPointReference>
+		<AxSecurityEntryPointReference>
+			<Name>ARBCodeExtensions</Name>
+			<Grant>
+				<Read>Allow</Read>
+			</Grant>
+			<ObjectName>ARBCodeExtensions</ObjectName>
+			<ObjectType>MenuItemDisplay</ObjectType>
+			<Forms />
+		</AxSecurityEntryPointReference>
 	</EntryPoints>
 	<FormControlOverrides />
 </AxSecurityPrivilege>

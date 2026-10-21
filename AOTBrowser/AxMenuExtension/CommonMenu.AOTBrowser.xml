@@ -67,6 +67,23 @@
 				<MenuItemName>ARBEnumMetadata</MenuItemName>
 			</MenuElement>
 		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Inquiries</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBCodeExtensions</Name>
+				<MenuItemName>ARBCodeExtensions</MenuItemName>
+			</MenuElement>
+		</AxMenuExtensionElement>
+		<AxMenuExtensionElement xmlns="">
+			<Parent>Periodic</Parent>
+			<MenuElement xmlns=""
+				i:type="AxMenuElementMenuItem">
+				<Name>ARBCodeExtensionPopulate</Name>
+				<MenuItemName>ARBCodeExtensionPopulate</MenuItemName>
+				<MenuItemType>Action</MenuItemType>
+			</MenuElement>
+		</AxMenuExtensionElement>
 	</Elements>
 	<MenuElementModifications />
 	<PropertyModifications />
