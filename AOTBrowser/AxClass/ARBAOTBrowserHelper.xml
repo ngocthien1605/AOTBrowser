@@ -404,6 +404,149 @@ public final class ARBAOTBrowserHelper
 
 ]]></Source>
 			</Method>
+			<Method>
+				<Name>definingModel</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the model that defines a metadata object (the model in the lowest layer) and its package.
+    /// </summary>
+    /// <param name="_object">The metadata object, for example an AxTable.</param>
+    /// <returns>A container [model name, package name]; empty strings when unknown.</returns>
+    public static container definingModel(anytype _object)
+    {
+        str modelName;
+        str packageName;
+        INamedObject namedObject = _object as INamedObject;
+
+        if (namedObject == null)
+        {
+            return ['', ''];
+        }
+
+        System.Object clrObject = _object;
+        try
+        {
+            int lowestLayer = intMax();
+            var modelsEnum = Xpp.MetadataSupport::GetModelsOfMetadataArtifact(namedObject.Name, clrObject.GetType()).GetEnumerator();
+            while (modelsEnum.MoveNext())
+            {
+                ModelInfo modelInfo = modelsEnum.get_Current();
+                if (modelInfo.Layer < lowestLayer)
+                {
+                    lowestLayer = modelInfo.Layer;
+                    modelName   = modelInfo.Name;
+                }
+            }
+
+            packageName = Xpp.MetadataSupport::GetModuleOfMetadataArtifact(namedObject.Name, clrObject.GetType());
+        }
+        catch (Exception::CLRError)
+        {
+            // Unknown to the metadata provider: leave model and package empty.
+        }
+
+        return [modelName, packageName];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>modelSummary</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets all models that contain a metadata object, with their layers, and its package.
+    /// </summary>
+    /// <param name="_object">The metadata object.</param>
+    /// <returns>A container [models with layers, package name]; empty container when the object has no name.</returns>
+    public static container modelSummary(anytype _object)
+    {
+        INamedObject namedObject = _object as INamedObject;
+        if (namedObject == null)
+        {
+            return conNull();
+        }
+
+        str models;
+        str packageName;
+        System.Object clrObject = _object;
+        try
+        {
+            var modelsEnum = Xpp.MetadataSupport::GetModelsOfMetadataArtifact(namedObject.Name, clrObject.GetType()).GetEnumerator();
+            while (modelsEnum.MoveNext())
+            {
+                ModelInfo modelInfo = modelsEnum.get_Current();
+                models += (models ? ', ' : '') + strFmt('%1 (%2, %3)', modelInfo.Name, ARBAOTBrowserHelper::layerName(modelInfo.Layer), modelInfo.Publisher);
+            }
+
+            packageName = Xpp.MetadataSupport::GetModuleOfMetadataArtifact(namedObject.Name, clrObject.GetType());
+        }
+        catch (Exception::CLRError)
+        {
+            // Unknown to the metadata provider.
+        }
+
+        return [models, packageName];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>extensionModels</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the distinct models that contain the given extensions of an object.
+    /// </summary>
+    /// <param name="_extensions">An enumerator of extension metadata objects; may be null.</param>
+    /// <returns>The model names separated by commas, or an empty string.</returns>
+    public static str extensionModels(System.Collections.IEnumerator _extensions)
+    {
+        str models;
+        Set seen = new Set(Types::String);
+
+        if (CLRInterop::isNull(_extensions))
+        {
+            return '';
+        }
+
+        while (_extensions.MoveNext())
+        {
+            str modelName;
+            str packageName;
+            [modelName, packageName] = ARBAOTBrowserHelper::definingModel(_extensions.Current);
+            if (modelName && !seen.in(modelName))
+            {
+                seen.add(modelName);
+                models += (models ? ', ' : '') + modelName;
+            }
+        }
+
+        return models;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>layerName</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Gets the short name of a model layer number, for example 8 = ISV, 10 = VAR.
+    /// </summary>
+    /// <param name="_layer">The layer number.</param>
+    /// <returns>The layer short name.</returns>
+    public static str layerName(int _layer)
+    {
+        container names = ['SYS', 'SYP', 'GLS', 'GLP', 'FPK', 'FPP', 'SLN', 'SLP', 'ISV', 'ISP', 'VAR', 'VAP', 'CUS', 'CUP', 'USR', 'USP'];
+
+        if (_layer >= 0 && _layer < conLen(names))
+        {
+            return conPeek(names, _layer + 1);
+        }
+
+        return int2Str(_layer);
+    }
+
+]]></Source>
+			</Method>
 		</Methods>
 	</SourceCode>
 </AxClass>

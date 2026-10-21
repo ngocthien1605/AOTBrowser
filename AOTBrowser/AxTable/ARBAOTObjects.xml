@@ -123,6 +123,20 @@ public class ARBAOTObjects extends common
 			<Name>ObjectId</Name>
 			<ExtendedDataType>ARBObjectId</ExtendedDataType>
 		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Model</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>Name</ExtendedDataType>
+			<Label>@AOTBrowser:Model</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Package</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>Name</ExtendedDataType>
+			<Label>@AOTBrowser:Package</Label>
+		</AxTableField>
 	</Fields>
 	<FullTextIndexes />
 	<Indexes>
@@ -130,6 +144,21 @@ public class ARBAOTObjects extends common
 			<Name>TypeNameIdx</Name>
 			<AlternateKey>Yes</AlternateKey>
 			<Fields>
+				<AxTableIndexField>
+					<DataField>Type</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>Name</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+		<AxTableIndex>
+			<Name>ModelIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>Model</DataField>
+				</AxTableIndexField>
 				<AxTableIndexField>
 					<DataField>Type</DataField>
 				</AxTableIndexField>

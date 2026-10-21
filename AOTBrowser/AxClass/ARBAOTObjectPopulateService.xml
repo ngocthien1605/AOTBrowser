@@ -49,6 +49,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = table.Name;
                     aotObjects.Label = SysLabel::labelId2String2(table.Label);
                     aotObjects.Type = ARBAOTObjectType::Table;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(table);
                     aotObjects.ObjectId = tableName2Id(table.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -77,6 +78,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = view.Name;
                     aotObjects.Label = SysLabel::labelId2String2(view.Label);
                     aotObjects.Type = ARBAOTObjectType::View;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(view);
                     aotObjects.ObjectId = tableName2Id(view.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -106,6 +108,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = enum.Name;
                     aotObjects.Label = SysLabel::labelId2String2(enum.Label);
                     aotObjects.Type = ARBAOTObjectType::BaseEnum;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(enum);
                     aotObjects.ObjectId = enumName2Id(enum.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -135,6 +138,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = edt.Name;
                     aotObjects.Label = SysLabel::labelId2String2(edt.Label);
                     aotObjects.Type = ARBAOTObjectType::ExtendedDataType;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(edt);
                     aotObjects.ObjectId = extendedtypeName2Id(edt.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -168,6 +172,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = dataEntityView.Name;
                     aotObjects.Label = SysLabel::labelId2String2(dataEntityView.Label);
                     aotObjects.Type = ARBAOTObjectType::DataEntity;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(dataEntityView);
                     aotObjects.ObjectId = tableName2Id(dataEntityView.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -197,6 +202,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = map.Name;
                     aotObjects.Label = SysLabel::labelId2String2(map.Label);
                     aotObjects.Type = ARBAOTObjectType::Map;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(map);
                     aotObjectsInsertList.add(aotObjects);
                 }
 
@@ -225,6 +231,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = aotClass.Name;
                     //aotObjects.Label = SysLabel::labelId2String2(aotClass.Label);
                     aotObjects.Type = ARBAOTObjectType::Class;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(aotClass);
                     aotObjects.ObjectId = className2Id(aotClass.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -260,6 +267,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                         aotObjects.Label = SysLabel::labelId2String2(form.Design.Caption);
                     }
                     aotObjects.Type = ARBAOTObjectType::Form;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(form);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -291,6 +299,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                         aotObjects.Label = SysLabel::labelId2String2(querySimple.Title);
                     }
                     aotObjects.Type = ARBAOTObjectType::Query;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(query);
                     aotObjectsInsertList.add(aotObjects);
                 }
 
@@ -319,6 +328,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = menu.Name;
                     aotObjects.Label = SysLabel::labelId2String2(menu.Label);
                     aotObjects.Type = ARBAOTObjectType::Menu;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(menu);
                     aotObjectsInsertList.add(aotObjects);
                 }
 
@@ -347,6 +357,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = tile.Name;
                     aotObjects.Label = SysLabel::labelId2String2(tile.Label);
                     aotObjects.Type = ARBAOTObjectType::Tile;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(tile);
                     aotObjectsInsertList.add(aotObjects);
                 }
 
@@ -374,6 +385,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.clear();
                     aotObjects.Name = tableCollection.Name;
                     aotObjects.Type = ARBAOTObjectType::TableCollection;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(tableCollection);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -401,6 +413,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = compositeEntity.Name;
                     aotObjects.Label = SysLabel::labelId2String2(compositeEntity.Label);
                     aotObjects.Type = ARBAOTObjectType::CompositeDataEntity;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(compositeEntity);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -432,6 +445,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = menuItemDisplay.Name;
                     aotObjects.Label = SysLabel::labelId2String2(menuItemDisplay.Label);
                     aotObjects.Type = ARBAOTObjectType::MenuItemDisplay;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(menuItemDisplay);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -459,6 +473,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = menuItemAction.Name;
                     aotObjects.Label = SysLabel::labelId2String2(menuItemAction.Label);
                     aotObjects.Type = ARBAOTObjectType::MenuItemAction;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(menuItemAction);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -486,6 +501,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = menuItemOutput.Name;
                     aotObjects.Label = SysLabel::labelId2String2(menuItemOutput.Label);
                     aotObjects.Type = ARBAOTObjectType::MenuItemOutput;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(menuItemOutput);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -513,6 +529,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = securityRole.Name;
                     aotObjects.Label = SysLabel::labelId2String2(securityRole.Label);
                     aotObjects.Type = ARBAOTObjectType::SecurityRole;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(securityRole);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -540,6 +557,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = securityDuty.Name;
                     aotObjects.Label = SysLabel::labelId2String2(securityDuty.Label);
                     aotObjects.Type = ARBAOTObjectType::SecurityDuty;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(securityDuty);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -567,6 +585,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = securityPrivilege.Name;
                     aotObjects.Label = SysLabel::labelId2String2(securityPrivilege.Label);
                     aotObjects.Type = ARBAOTObjectType::SecurityPrivilege;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(securityPrivilege);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -598,6 +617,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = aggregateDataEntity.Name;
                     aotObjects.Label = SysLabel::labelId2String2(aggregateDataEntity.Label);
                     aotObjects.Type = ARBAOTObjectType::AggregateDataEntity;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(aggregateDataEntity);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -625,6 +645,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowCategory;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -652,6 +673,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowApproval;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -679,6 +701,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowTask;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -706,6 +729,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowAutomatedTask;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -733,6 +757,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowType;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -760,6 +785,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowHierarchyAssignmentProvider;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -787,6 +813,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowParticipantAssignmentProvider;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -814,6 +841,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowQueueAssignmentProvider;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -841,6 +869,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::WorkflowDueDateCalculationProvider;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -872,6 +901,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::Resource;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -899,6 +929,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::LicenseCode;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -926,6 +957,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::ConfigKey;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjects.ObjectId = configurationKeyName2Id(object.Name);
                     aotObjectsInsertList.add(aotObjects);
                 }
@@ -954,6 +986,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::ConfigKeyGroup;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -981,6 +1014,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     //aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::Service;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -1008,6 +1042,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     //aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::ServiceGroup;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -1035,6 +1070,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     //aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::Report;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }
@@ -1062,6 +1098,7 @@ class ARBAOTObjectPopulateService extends SysOperationServiceBase
                     aotObjects.Name = object.Name;
                     aotObjects.Label = SysLabel::labelId2String2(object.Label);
                     aotObjects.Type = ARBAOTObjectType::KPI;
+                    [aotObjects.Model, aotObjects.Package] = ARBAOTBrowserHelper::definingModel(object);
                     aotObjectsInsertList.add(aotObjects);
                 }
             }

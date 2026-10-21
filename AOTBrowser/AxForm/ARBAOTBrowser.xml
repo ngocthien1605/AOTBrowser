@@ -681,6 +681,12 @@ public class ARBAOTBrowser extends FormRun
                     ARBAOTObjectProperties.Value = int2Str(objectId);
                     ARBAOTObjectProperties.insert();
                 }
+                // Model information only for the object itself (the root of the tree), not for its parts.
+                if (ObjectTree.getSelection() == ObjectTree.getRoot())
+                {
+                    element.addModelProperties(object);
+                }
+
 
                 if (object is AxTableField)
                 {
@@ -1362,7 +1368,61 @@ public class ARBAOTBrowser extends FormRun
 
 ]]></Source>
 			</Method>
-		</Methods>
+			<Method>
+				<Name>addModelProperties</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds the model rows (_Model, _Package, _ExtendedByModels) to the properties grid for the selected object.
+    /// </summary>
+    /// <param name = "_object">The metadata object of the selected object.</param>
+    public void addModelProperties(anytype _object)
+    {
+        container summary = ARBAOTBrowserHelper::modelSummary(_object);
+        if (!conLen(summary))
+        {
+            return;
+        }
+
+        str models;
+        str packageName;
+        [models, packageName] = summary;
+
+        element.insertProperty('_Model', models);
+        element.insertProperty('_Package', packageName);
+
+        if (aotObjectTree)
+        {
+            str extensionModels = ARBAOTBrowserHelper::extensionModels(aotObjectTree.getAOTObjectExtensions(currentObjectName));
+            if (extensionModels)
+            {
+                element.insertProperty('_ExtendedByModels', extensionModels);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>insertProperty</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one row to the properties grid.
+    /// </summary>
+    /// <param name = "_name">The property name.</param>
+    /// <param name = "_value">The property value.</param>
+    public void insertProperty(str _name, str _value)
+    {
+        if (_value)
+        {
+            ARBAOTObjectProperties.clear();
+            ARBAOTObjectProperties.Name  = _name;
+            ARBAOTObjectProperties.Value = _value;
+            ARBAOTObjectProperties.insert();
+        }
+    }
+
+]]></Source>
+			</Method>		</Methods>
 		<DataSources xmlns="">
 			<DataSource>
 				<Name>ARBAOTObjects</Name>
@@ -2184,10 +2244,16 @@ public class ARBAOTBrowser extends FormRun
 					<DataField>Label</DataField>
 				</AxFormDataSourceField>
 				<AxFormDataSourceField>
+					<DataField>Model</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
 					<DataField>Name</DataField>
 				</AxFormDataSourceField>
 				<AxFormDataSourceField>
 					<DataField>ObjectId</DataField>
+				</AxFormDataSourceField>
+				<AxFormDataSourceField>
+					<DataField>Package</DataField>
 				</AxFormDataSourceField>
 				<AxFormDataSourceField>
 					<DataField>Partition</DataField>
@@ -2726,6 +2792,24 @@ public class ARBAOTBrowser extends FormRun
 								<FormControlExtension
 									i:nil="true" />
 								<DataField>ObjectId</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormStringControl">
+								<Name>ARBAOTObjects_Model</Name>
+								<Type>String</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>Model</DataField>
+								<DataSource>ARBAOTObjects</DataSource>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormStringControl">
+								<Name>ARBAOTObjects_Package</Name>
+								<Type>String</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<DataField>Package</DataField>
 								<DataSource>ARBAOTObjects</DataSource>
 							</AxFormControl>
 						</Controls>

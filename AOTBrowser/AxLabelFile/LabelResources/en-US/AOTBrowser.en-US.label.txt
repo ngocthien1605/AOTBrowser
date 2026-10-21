@@ -230,3 +230,7 @@ DetailPanelWhereUsed=Where used
  ;ARB_AOTBrowser
 DetailSection=Section
  ;ARB_AOTBrowser
+Model=Model
+ ;ARB_AOTBrowser
+Package=Package
+ ;ARB_AOTBrowser
