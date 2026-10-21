@@ -5,7 +5,7 @@
 		<Declaration><![CDATA[
 /// <summary>
 /// "Extensions in code" panel: Chain of Command wrappers, event handlers and extension classes that
-/// target the selected class, table, view, data entity or form. Reads <c>ARBCodeExtensions</c>, filled
+/// target the selected class, table, view, data entity, form or query. Reads <c>ARBCodeExtensions</c>, filled
 /// by <c>ARBCodeExtensionPopulateService</c>.
 /// </summary>
 [ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Extensions)]
@@ -26,6 +26,7 @@ class ARBAOTDetailPanelExtensionsProvider extends ARBAOTDetailPanelProvider
             case ARBAOTObjectType::View:
             case ARBAOTObjectType::DataEntity:
             case ARBAOTObjectType::Form:
+            case ARBAOTObjectType::Query:
                 return true;
         }
 

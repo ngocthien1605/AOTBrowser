@@ -416,3 +416,5 @@ RuntimeSysFlighting=SysFlighting row
  ;ARB_AOTBrowser
 RuntimeValue=Value
  ;ARB_AOTBrowser
+LabelSameAsBase=Same text as en-US, probably not translated
+ ;ARB_AOTBrowser

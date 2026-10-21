@@ -410,7 +410,7 @@ public class ARBAOTBrowser extends FormRun
         ARBOpenTableBrowser.enabled(tableBrowserEnabled
             && hasMenuItemAccess(menuItemDisplayStr(SysTableBrowser), MenuItemType::Display));
         ARBMenuItemReferences.enabled(menuItemRefEnabled);
-        ViewPermissionsButton.enabled(menuItemRefEnabled);
+        ViewPermissionsButton.enabled(menuItemRefEnabled && hasMenuItemAccess(menuItemDisplayStr(SysSecDiagnostics), MenuItemType::Display));
         CopyLinkButton.enabled(currentObjectName != '');
 
         // Refill the detail panel that is open, if any, for the new object.

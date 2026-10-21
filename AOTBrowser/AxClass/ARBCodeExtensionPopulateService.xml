@@ -180,7 +180,20 @@ class ARBCodeExtensionPopulateService extends SysOperationServiceBase
             System.Xml.XmlElement node = subscriptionsEnum.Current;
             str targetElement = node.GetAttribute('TargetElement');
             str target = this.stripFormPrefix(targetElement);
-            ARBAOTObjectType targetType = strStartsWith(targetElement, 'Form.') ? ARBAOTObjectType::Form : this.elementType(target);
+            ARBAOTObjectType targetType;
+            if (strStartsWith(targetElement, 'Form.'))
+            {
+                targetType = ARBAOTObjectType::Form;
+            }
+            else if (strStartsWith(targetElement, 'Query.'))
+            {
+                targetType = ARBAOTObjectType::Query;
+                target     = subStr(targetElement, 7, strLen(targetElement) - 6);
+            }
+            else
+            {
+                targetType = this.elementType(target);
+            }
 
             this.addRow(
                 ARBCodeExtensionKind::EventHandler,

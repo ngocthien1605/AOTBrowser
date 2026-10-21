@@ -6,7 +6,7 @@
 /// <summary>
 /// "Labels" panel: the Label, HelpText, DeveloperDocumentation and design Caption properties of the
 /// selected object, translated into every label language of LanguageTable with
-/// <c>SysLabel::labelId2String</c>. Flags missing translations and text that is not a label.
+/// <c>SysLabel::labelId2String</c>. Flags missing translations, text identical to en-US and text that is not a label.
 /// </summary>
 [ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Labels)]
 class ARBAOTDetailPanelLabelsProvider extends ARBAOTDetailPanelProvider
@@ -99,6 +99,8 @@ class ARBAOTDetailPanelLabelsProvider extends ARBAOTDetailPanelProvider
             return;
         }
 
+        const str BaseLanguage = 'en-us';
+        str baseText = SysLabel::labelId2String(labelId, BaseLanguage);
         LanguageTable language;
 
         while select LanguageId from language
@@ -107,8 +109,20 @@ class ARBAOTDetailPanelLabelsProvider extends ARBAOTDetailPanelProvider
         {
             str text = SysLabel::labelId2String(labelId, language.LanguageId);
             boolean missing = !text || text == labelId;
+            str status;
 
-            this.addLine(_displayName, language.LanguageId, missing ? '' : text, missing ? "@AOTBrowser:LabelMissing" : '', labelId);
+            if (missing)
+            {
+                status = "@AOTBrowser:LabelMissing";
+            }
+            else if (strLwr(language.LanguageId) != BaseLanguage && text == baseText)
+            {
+                // The label runtime falls back to en-US when a language has no translation, so identical
+                // text usually means the translation is missing.
+                status = "@AOTBrowser:LabelSameAsBase";
+            }
+
+            this.addLine(_displayName, language.LanguageId, missing ? '' : text, status, labelId);
         }
     }
 
