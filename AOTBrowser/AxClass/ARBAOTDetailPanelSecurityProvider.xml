@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelSecurityProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// "Security" panel. For a menu item: the privileges that list it (from the menu item reference index)
+/// and the roles of the deployed security model that grant it, with access and number of users.
+/// For a role: its users and all entry points with access. For a duty or privilege: the roles that contain it.
+/// Reads the kernel security tables (SecurityRoleRuntime, SecurityRole, SecurityUserRole, exploded graphs).
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Security)]
+class ARBAOTDetailPanelSecurityProvider extends ARBAOTDetailPanelProvider
+{
+    const int MaxLines = 2000;
+    const int AccessAllowed = 2;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::MenuItemDisplay:
+            case ARBAOTObjectType::MenuItemAction:
+            case ARBAOTObjectType::MenuItemOutput:
+            case ARBAOTObjectType::SecurityRole:
+            case ARBAOTObjectType::SecurityDuty:
+            case ARBAOTObjectType::SecurityPrivilege:
+                return true;
+        }
+
+        return false;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:DetailSection", "@AOTBrowser:DetailName", "@AOTBrowser:SecurityAccess", "@AOTBrowser:SecurityUsers", "@AOTBrowser:DetailDescription"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::MenuItemDisplay:
+                this.menuItemSecurity(SecurableType::MenuItemDisplay, MenuItemType::Display, _objectName);
+                break;
+
+            case ARBAOTObjectType::MenuItemAction:
+                this.menuItemSecurity(SecurableType::MenuItemAction, MenuItemType::Action, _objectName);
+                break;
+
+            case ARBAOTObjectType::MenuItemOutput:
+                this.menuItemSecurity(SecurableType::MenuItemOutput, MenuItemType::Output, _objectName);
+                break;
+
+            case ARBAOTObjectType::SecurityRole:
+                this.roleSecurity(_objectName);
+                break;
+
+            case ARBAOTObjectType::SecurityDuty:
+                this.dutyRoles(_objectName);
+                break;
+
+            case ARBAOTObjectType::SecurityPrivilege:
+                this.privilegeRoles(_objectName);
+                break;
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>menuItemSecurity</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Privileges that list the menu item, and deployed roles that grant it.
+    /// </summary>
+    private void menuItemSecurity(SecurableType _securableType, MenuItemType _menuItemType, str _name)
+    {
+        ARBMenuItemReferences references;
+
+        while select RefObjectName from references
+            group by RefObjectName
+            where references.MenuItemName  == _name
+               && references.MenuItemType  == _menuItemType
+               && references.RefObjectType == ARBAOTObjectType::SecurityPrivilege
+        {
+            this.addLine("@AOTBrowser:SecurityPrivileges", references.RefObjectName, '', '', '', '', ARBAOTObjectType::SecurityPrivilege, references.RefObjectName);
+        }
+
+        SecurityRoleRuntime runtime;
+        SecurityRole        role;
+
+        while select runtime
+            where runtime.Name      == _name
+               && runtime.Type      == _securableType
+               && runtime.ChildName == ''
+            join role
+                order by AotName
+                where role.RecId == runtime.SecurityRole
+        {
+            this.addLine(
+                "@AOTBrowser:SecurityRoles",
+                role.AotName,
+                this.accessText(runtime),
+                int642Str(this.userCount(role.RecId)),
+                role.Name,
+                '',
+                ARBAOTObjectType::SecurityRole,
+                role.AotName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>roleSecurity</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Users and entry points of a deployed role.
+    /// </summary>
+    private void roleSecurity(str _roleName)
+    {
+        SecurityRole role;
+
+        select firstonly role
+            where role.AotName == _roleName;
+
+        if (!role.RecId)
+        {
+            this.addLine('', "@AOTBrowser:SecurityNotDeployed");
+            return;
+        }
+
+        SecurityUserRole userRole;
+        UserInfo         userInfo;
+
+        while select User from userRole
+            where userRole.SecurityRole     == role.RecId
+               && userRole.AssignmentStatus == RoleAssignmentStatus::Enabled
+            join name from userInfo
+                where userInfo.id == userRole.User
+        {
+            this.addLine("@AOTBrowser:SecurityUsers", userRole.User, '', '', userInfo.name);
+        }
+
+        SecurityRoleRuntime runtime;
+        int                 entryPoints;
+
+        while select runtime
+            order by Type, Name
+            where runtime.SecurityRole == role.RecId
+               && runtime.ChildName    == ''
+        {
+            entryPoints++;
+            if (entryPoints > MaxLines)
+            {
+                this.addLine('', strFmt("@AOTBrowser:SecurityTooManyLines", MaxLines));
+                break;
+            }
+
+            this.addLine(strFmt('%1', runtime.Type), runtime.Name, this.accessText(runtime), '', '', '', this.objectTypeOfSecurable(runtime.Type), runtime.Name);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>dutyRoles</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Deployed roles that contain a duty.
+    /// </summary>
+    private void dutyRoles(str _dutyName)
+    {
+        SecurityDuty                  duty;
+        SecurityRoleDutyExplodedGraph graph;
+        SecurityRole                  role;
+
+        select firstonly duty
+            where duty.Identifier == _dutyName;
+
+        if (!duty.RecId)
+        {
+            this.addLine('', "@AOTBrowser:SecurityNotDeployed");
+            return;
+        }
+
+        while select SecurityRole from graph
+            where graph.SecurityDuty == duty.RecId
+            join role
+                order by AotName
+                where role.RecId == graph.SecurityRole
+        {
+            this.addLine("@AOTBrowser:SecurityRoles", role.AotName, '', int642Str(this.userCount(role.RecId)), role.Name, '', ARBAOTObjectType::SecurityRole, role.AotName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>privilegeRoles</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Deployed roles that contain a privilege.
+    /// </summary>
+    private void privilegeRoles(str _privilegeName)
+    {
+        SecurityPrivilege                  privilege;
+        SecurityRolePrivilegeExplodedGraph graph;
+        SecurityRole                       role;
+
+        select firstonly privilege
+            where privilege.Identifier == _privilegeName;
+
+        if (!privilege.RecId)
+        {
+            this.addLine('', "@AOTBrowser:SecurityNotDeployed");
+            return;
+        }
+
+        while select SecurityRole from graph
+            where graph.SecurityPrivilege == privilege.RecId
+            join role
+                order by AotName
+                where role.RecId == graph.SecurityRole
+        {
+            this.addLine("@AOTBrowser:SecurityRoles", role.AotName, '', int642Str(this.userCount(role.RecId)), role.Name, '', ARBAOTObjectType::SecurityRole, role.AotName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>userCount</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Number of users with an enabled direct assignment of a role.
+    /// </summary>
+    private int64 userCount(RefRecId _roleRecId)
+    {
+        SecurityUserRole userRole;
+
+        select count(RecId) from userRole
+            where userRole.SecurityRole     == _roleRecId
+               && userRole.AssignmentStatus == RoleAssignmentStatus::Enabled;
+
+        return userRole.RecId;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>accessText</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The allowed access levels of an entry point grant, for example "Read, Update".
+    /// </summary>
+    private str accessText(SecurityRoleRuntime _runtime)
+    {
+        container names  = ["@AOTBrowser:AccessRead", "@AOTBrowser:AccessUpdate", "@AOTBrowser:AccessCreate", "@AOTBrowser:AccessCorrect", "@AOTBrowser:AccessDelete", "@AOTBrowser:AccessInvoke"];
+        container values = [_runtime.ReadAccess, _runtime.UpdateAccess, _runtime.CreateAccess, _runtime.CorrectAccess, _runtime.DeleteAccess, _runtime.InvokeAccess];
+        str text;
+
+        for (int i = 1; i <= conLen(names); i++)
+        {
+            if (conPeek(values, i) == AccessAllowed)
+            {
+                text += (text ? ', ' : '') + conPeek(names, i);
+            }
+        }
+
+        return text;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>objectTypeOfSecurable</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The browser object type of a securable type, so that menu item lines can be followed.
+    /// </summary>
+    private ARBAOTObjectType objectTypeOfSecurable(SecurableType _securableType)
+    {
+        switch (_securableType)
+        {
+            case SecurableType::MenuItemDisplay:
+                return ARBAOTObjectType::MenuItemDisplay;
+
+            case SecurableType::MenuItemAction:
+                return ARBAOTObjectType::MenuItemAction;
+
+            case SecurableType::MenuItemOutput:
+                return ARBAOTObjectType::MenuItemOutput;
+        }
+
+        return ARBAOTObjectType::None;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

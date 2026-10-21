@@ -262,3 +262,33 @@ TargetName=Target
  ;ARB_AOTBrowser
 TargetType=Target type
  ;ARB_AOTBrowser
+AccessCorrect=Correct
+ ;ARB_AOTBrowser
+AccessCreate=Create
+ ;ARB_AOTBrowser
+AccessDelete=Delete
+ ;ARB_AOTBrowser
+AccessInvoke=Invoke
+ ;ARB_AOTBrowser
+AccessRead=Read
+ ;ARB_AOTBrowser
+AccessUpdate=Update
+ ;ARB_AOTBrowser
+DetailDescription=Description
+ ;ARB_AOTBrowser
+SecurityAccess=Access
+ ;ARB_AOTBrowser
+SecurityNotDeployed=This security object is not in the deployed security model.
+ ;ARB_AOTBrowser
+SecurityPrivileges=Privileges
+ ;ARB_AOTBrowser
+SecurityRoles=Roles
+ ;ARB_AOTBrowser
+SecurityTooManyLines=Only the first %1 lines are shown.
+ ;ARB_AOTBrowser
+SecurityUsers=Users
+ ;ARB_AOTBrowser
+ViewPermissions=View permissions
+ ;ARB_AOTBrowser
+ViewPermissionsHelp=Opens the standard security diagnostics for the selected menu item
+ ;ARB_AOTBrowser

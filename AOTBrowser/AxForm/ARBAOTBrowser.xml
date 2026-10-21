@@ -410,6 +410,7 @@ public class ARBAOTBrowser extends FormRun
         ARBOpenTableBrowser.enabled(tableBrowserEnabled
             && hasMenuItemAccess(menuItemDisplayStr(SysTableBrowser), MenuItemType::Display));
         ARBMenuItemReferences.enabled(menuItemRefEnabled);
+        ViewPermissionsButton.enabled(menuItemRefEnabled);
         CopyLinkButton.enabled(currentObjectName != '');
 
         // Refill the detail panel that is open, if any, for the new object.
@@ -2240,6 +2241,49 @@ public class ARBAOTBrowser extends FormRun
 					</Method>
 				</Methods>
 			</Control>
+			<Control>
+				<Name>ViewPermissionsButton</Name>
+				<Type>Button</Type>
+				<Methods>
+					<Method>
+						<Name>clicked</Name>
+						<Source><![CDATA[
+        /// <summary>
+        /// Opens the standard security diagnostics (View permissions) for the selected menu item.
+        /// </summary>
+        public void clicked()
+        {
+            super();
+
+            SecurableType securableType;
+            switch (currentObjectType)
+            {
+                case ARBAOTObjectType::MenuItemDisplay:
+                    securableType = SecurableType::MenuItemDisplay;
+                    break;
+
+                case ARBAOTObjectType::MenuItemAction:
+                    securableType = SecurableType::MenuItemAction;
+                    break;
+
+                case ARBAOTObjectType::MenuItemOutput:
+                    securableType = SecurableType::MenuItemOutput;
+                    break;
+
+                default:
+                    return;
+            }
+
+            Args args = new Args();
+            args.parmObject(SecurityContext::constructFromEntryPoint(securableType, currentObjectName, ''));
+            args.caller(element);
+            new MenuFunction(menuItemDisplayStr(SysSecDiagnostics), MenuItemType::Display).run(args);
+        }
+
+]]></Source>
+					</Method>
+				</Methods>
+			</Control>
 		</DataControls>
 		<Members xmlns="" />
 	</SourceCode>
@@ -2694,6 +2738,17 @@ public class ARBAOTBrowser extends FormRun
 								<FormControlExtension
 									i:nil="true" />
 								<Text>@AOTBrowser:CopyLink</Text>
+							</AxFormControl>
+							<AxFormControl xmlns=""
+								i:type="AxFormButtonControl">
+								<Name>ViewPermissionsButton</Name>
+								<AutoDeclaration>Yes</AutoDeclaration>
+								<Enabled>No</Enabled>
+								<HelpText>@AOTBrowser:ViewPermissionsHelp</HelpText>
+								<Type>Button</Type>
+								<FormControlExtension
+									i:nil="true" />
+								<Text>@AOTBrowser:ViewPermissions</Text>
 							</AxFormControl>
 						</Controls>
 						<Caption>General</Caption>
