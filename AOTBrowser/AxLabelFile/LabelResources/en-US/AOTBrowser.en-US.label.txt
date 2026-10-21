@@ -338,3 +338,81 @@ WhereUsedUserName=Used by
  ;ARB_AOTBrowser
 WhereUsedUserType=Used by type
  ;ARB_AOTBrowser
+LabelId=Label ID
+ ;ARB_AOTBrowser
+LabelLanguage=Language
+ ;ARB_AOTBrowser
+LabelMissing=Missing translation
+ ;ARB_AOTBrowser
+LabelNotALabel=Text, not a label
+ ;ARB_AOTBrowser
+LabelProperty=Property
+ ;ARB_AOTBrowser
+LabelStatus=Status
+ ;ARB_AOTBrowser
+LabelText=Text
+ ;ARB_AOTBrowser
+RuntimeBatchJobs=Open batch jobs
+ ;ARB_AOTBrowser
+RuntimeBatchTasks=Batch tasks
+ ;ARB_AOTBrowser
+RuntimeBlocked=Blocked
+ ;ARB_AOTBrowser
+RuntimeCanDisable=Can be disabled
+ ;ARB_AOTBrowser
+RuntimeChangeTracking=Change tracking
+ ;ARB_AOTBrowser
+RuntimeContinuous=Continuous
+ ;ARB_AOTBrowser
+RuntimeDataManagement=Data management
+ ;ARB_AOTBrowser
+RuntimeDetails=Details
+ ;ARB_AOTBrowser
+RuntimeEnableDate=Enable date
+ ;ARB_AOTBrowser
+RuntimeEnabled=Enabled
+ ;ARB_AOTBrowser
+RuntimeEnabledByDefault=Enabled by default
+ ;ARB_AOTBrowser
+RuntimeEntityName=Entity
+ ;ARB_AOTBrowser
+RuntimeFeature=Feature management
+ ;ARB_AOTBrowser
+RuntimeFeatureName=Feature name
+ ;ARB_AOTBrowser
+RuntimeFlight=Flight
+ ;ARB_AOTBrowser
+RuntimeLifecycleStage=Lifecycle stage
+ ;ARB_AOTBrowser
+RuntimeManual=Manual
+ ;ARB_AOTBrowser
+RuntimeModule=Module
+ ;ARB_AOTBrowser
+RuntimeMore=More
+ ;ARB_AOTBrowser
+RuntimeNextNumber=Next %1
+ ;ARB_AOTBrowser
+RuntimeNoInstance=The flight has no instance method
+ ;ARB_AOTBrowser
+RuntimeNoSequence=No number sequence
+ ;ARB_AOTBrowser
+RuntimeNotInDataManagement=The entity is not in the data management entity list. Refresh the entity list in Data management.
+ ;ARB_AOTBrowser
+RuntimeNumberSequence=Number sequence
+ ;ARB_AOTBrowser
+RuntimeOData=OData
+ ;ARB_AOTBrowser
+RuntimePublicCollectionName=Public collection name
+ ;ARB_AOTBrowser
+RuntimePublicEntityName=Public entity name
+ ;ARB_AOTBrowser
+RuntimeRegisteredOn=Registered on EDT
+ ;ARB_AOTBrowser
+RuntimeSetBased=Set-based processing
+ ;ARB_AOTBrowser
+RuntimeShared=Shared
+ ;ARB_AOTBrowser
+RuntimeSysFlighting=SysFlighting row
+ ;ARB_AOTBrowser
+RuntimeValue=Value
+ ;ARB_AOTBrowser

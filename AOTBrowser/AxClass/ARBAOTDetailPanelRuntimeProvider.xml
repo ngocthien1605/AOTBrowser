@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelRuntimeProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+
+/// <summary>
+/// "Runtime state" panel, read live from this environment. Classes: Feature management state
+/// (FeatureManagementState, FeatureManagementMetadata), flight state (Flight.isEnabled, SysFlighting
+/// rows for the flight and its kill switch) and batch tasks and open batch jobs (Batch, BatchJob).
+/// EDTs: number sequences per scope (NumberSequenceDatatype, NumberSequenceReference, NumberSequenceScope,
+/// NumberSequenceTable). Data entities: data management entities (DMFEntity) and OData names.
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Runtime)]
+class ARBAOTDetailPanelRuntimeProvider extends ARBAOTDetailPanelProvider
+{
+    const int MaxLines = 200;
+    const int MaxDepth = 50;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Class:
+            case ARBAOTObjectType::ExtendedDataType:
+            case ARBAOTObjectType::DataEntity:
+                return true;
+        }
+
+        return false;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:DetailSection", "@AOTBrowser:DetailName", "@AOTBrowser:RuntimeValue", "@AOTBrowser:RuntimeDetails", "@AOTBrowser:RuntimeMore"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Class:
+                this.featureState(_objectName);
+                this.flightState(_objectName);
+                this.batchState(_objectName);
+                break;
+
+            case ARBAOTObjectType::ExtendedDataType:
+                this.numberSequences(_objectName);
+                break;
+
+            case ARBAOTObjectType::DataEntity:
+                this.dataManagement(_objectName);
+                break;
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>yesNo</Name>
+				<Source><![CDATA[
+    private str yesNo(boolean _value)
+    {
+        return enum2Str(_value ? NoYes::Yes : NoYes::No);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>featureState</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Feature management state of a feature class.
+    /// </summary>
+    private void featureState(str _className)
+    {
+        FeatureManagementState    state;
+        FeatureManagementMetadata metadata;
+
+        select firstonly state
+            where state.Name == _className
+            outer join metadata
+                where metadata.FeatureState == state.RecId;
+
+        if (!state.RecId)
+        {
+            return;
+        }
+
+        str section = "@AOTBrowser:RuntimeFeature";
+        this.addLine(section, "@AOTBrowser:RuntimeEnabled", enum2Str(state.IsEnabled));
+
+        if (metadata.RecId)
+        {
+            this.addLine(section, "@AOTBrowser:RuntimeFeatureName", metadata.Label ? SysLabel::labelId2String(metadata.Label) : metadata.DisplayName);
+            this.addLine(section, "@AOTBrowser:RuntimeModule", enum2Str(metadata.Module));
+            this.addLine(section, "@AOTBrowser:RuntimeLifecycleStage", enum2Str(metadata.LifecycleStage));
+            this.addLine(section, "@AOTBrowser:RuntimeEnabledByDefault", enum2Str(metadata.IsEnabledByDefault));
+            this.addLine(section, "@AOTBrowser:RuntimeCanDisable", enum2Str(metadata.CanDisable));
+            this.addLine(section, "@AOTBrowser:RuntimeEnableDate", strFmt('%1', metadata.EnableDate));
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>flightState</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// State of a flight class (a subclass of <c>Flight</c>) and its SysFlighting rows.
+    /// </summary>
+    private void flightState(str _className)
+    {
+        ClassId classId = className2Id(_className);
+        if (!classId)
+        {
+            return;
+        }
+
+        SysDictClass dictClass = new SysDictClass(classId);
+        if (!dictClass.isExtending(classNum(Flight)) || dictClass.isAbstract())
+        {
+            return;
+        }
+
+        str section = "@AOTBrowser:RuntimeFlight";
+        try
+        {
+            Flight flight = dictClass.callStatic('instance');
+            if (flight)
+            {
+                this.addLine(section, "@AOTBrowser:RuntimeEnabled", this.yesNo(flight.isEnabled()));
+            }
+        }
+        catch (Exception::Error)
+        {
+            this.addLine(section, "@AOTBrowser:RuntimeEnabled", "@AOTBrowser:RuntimeNoInstance");
+        }
+
+        SysFlighting flighting;
+        str killSwitch = _className + '_KillSwitch';
+
+        while select FlightName, Enabled from flighting
+            where flighting.FlightName == _className
+               || flighting.FlightName == killSwitch
+        {
+            this.addLine(section, flighting.FlightName, enum2Str(flighting.Enabled), "@AOTBrowser:RuntimeSysFlighting");
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>batchState</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Batch tasks of the class by status, and batch jobs with such a task that have not ended.
+    /// </summary>
+    private void batchState(str _className)
+    {
+        ClassId classId = className2Id(_className);
+        if (!classId)
+        {
+            return;
+        }
+
+        Batch batch;
+
+        while select count(RecId) from batch
+            group by Status
+            where batch.ClassNumber == classId
+        {
+            this.addLine("@AOTBrowser:RuntimeBatchTasks", enum2Str(batch.Status), int642Str(batch.RecId));
+        }
+
+        BatchJob batchJob;
+        Batch    jobTask;
+        int      shown;
+
+        while select batchJob
+            order by StartDateTime desc
+            where batchJob.Status != BatchStatus::Finished
+               && batchJob.Status != BatchStatus::Canceled
+            exists join jobTask
+                where jobTask.BatchJobId  == batchJob.RecId
+                   && jobTask.ClassNumber == classId
+        {
+            shown++;
+            if (shown > MaxLines)
+            {
+                this.addLine('', strFmt("@AOTBrowser:DetailTooManyLines", MaxLines));
+                break;
+            }
+
+            this.addLine("@AOTBrowser:RuntimeBatchJobs", batchJob.Caption, enum2Str(batchJob.Status), strFmt('%1', batchJob.StartDateTime), batchJob.Company);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>numberSequences</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Number sequences of an EDT per scope. When the EDT has no number sequence reference, the EDTs it
+    /// extends are checked, as number sequence references are often registered on a parent EDT.
+    /// </summary>
+    private void numberSequences(str _edtName)
+    {
+        NumberSequenceDatatype datatype;
+        str                    registeredName = _edtName;
+
+        for (int depth = 1; registeredName && depth <= MaxDepth; depth++)
+        {
+            select firstonly datatype
+                where datatype.DatatypeId == extendedTypeName2Id(registeredName);
+
+            if (datatype.RecId)
+            {
+                break;
+            }
+
+            AxEdt edt = Xpp.MetadataSupport::GetEdt(registeredName);
+            registeredName = edt != null ? edt.Extends : '';
+        }
+
+        if (!datatype.RecId)
+        {
+            return;
+        }
+
+        str section = "@AOTBrowser:RuntimeNumberSequence";
+        if (registeredName != _edtName)
+        {
+            this.addLine(section, "@AOTBrowser:RuntimeRegisteredOn", registeredName, '', '', '', ARBAOTObjectType::ExtendedDataType, registeredName);
+        }
+        this.addLine(section, "@AOTBrowser:RuntimeModule", enum2Str(datatype.Module));
+
+        NumberSequenceReference reference;
+        NumberSequenceScope     scope;
+        NumberSequenceTable     sequence;
+
+        while select reference
+            where reference.NumberSequenceDatatype == datatype.RecId
+            join scope
+                order by DataArea
+                where scope.RecId == reference.NumberSequenceScope
+            outer join sequence
+                where sequence.RecId == reference.NumberSequenceId
+        {
+            this.addLine(
+                section,
+                scope.DataArea ? scope.DataArea : "@AOTBrowser:RuntimeShared",
+                sequence.NumberSequence ? sequence.NumberSequence : "@AOTBrowser:RuntimeNoSequence",
+                sequence.Format,
+                sequence.RecId ? this.sequenceFlags(sequence) : '');
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>sequenceFlags</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The next number and the flags of a number sequence, for example "Next 1001, Continuous".
+    /// </summary>
+    private str sequenceFlags(NumberSequenceTable _sequence)
+    {
+        str text = strFmt("@AOTBrowser:RuntimeNextNumber", _sequence.NextRec);
+
+        if (_sequence.Continuous)
+        {
+            text += ', ' + "@AOTBrowser:RuntimeContinuous";
+        }
+        if (_sequence.Manual)
+        {
+            text += ', ' + "@AOTBrowser:RuntimeManual";
+        }
+        if (_sequence.Blocked)
+        {
+            text += ', ' + "@AOTBrowser:RuntimeBlocked";
+        }
+
+        return text;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>dataManagement</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Data management entities of a data entity, and its OData names.
+    /// </summary>
+    private void dataManagement(str _entityName)
+    {
+        DMFEntity dmfEntity;
+        str       section = "@AOTBrowser:RuntimeDataManagement";
+
+        while select dmfEntity
+            where dmfEntity.TargetEntity == _entityName
+        {
+            this.addLine(section, "@AOTBrowser:RuntimeEntityName", dmfEntity.EntityName, enum2Str(dmfEntity.SysModule), enum2Str(dmfEntity.EntityCategory));
+            this.addLine(section, "@AOTBrowser:RuntimeEnabled", enum2Str(dmfEntity.EntityIsEnabled));
+            this.addLine(section, "@AOTBrowser:RuntimeChangeTracking", enum2Str(dmfEntity.DMFChangeTrackingType));
+            this.addLine(section, "@AOTBrowser:RuntimeSetBased", enum2Str(dmfEntity.TargetIsSetBased));
+        }
+
+        if (!dmfEntity.RecId && !this.lineCount())
+        {
+            this.addLine(section, "@AOTBrowser:RuntimeNotInDataManagement");
+        }
+
+        AxDataEntityView entityView = Xpp.MetadataSupport::GetDataEntityView(_entityName);
+        if (entityView != null && entityView.IsPublic == Microsoft.Dynamics.AX.Metadata.Core.MetaModel.NoYes::Yes)
+        {
+            this.addLine("@AOTBrowser:RuntimeOData", "@AOTBrowser:RuntimePublicCollectionName", entityView.PublicCollectionName);
+            this.addLine("@AOTBrowser:RuntimeOData", "@AOTBrowser:RuntimePublicEntityName", entityView.PublicEntityName);
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelLabelsProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// "Labels" panel: the Label, HelpText, DeveloperDocumentation and design Caption properties of the
+/// selected object, translated into every label language of LanguageTable with
+/// <c>SysLabel::labelId2String</c>. Flags missing translations and text that is not a label.
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Labels)]
+class ARBAOTDetailPanelLabelsProvider extends ARBAOTDetailPanelProvider
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        return _objectType != ARBAOTObjectType::None;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:LabelProperty", "@AOTBrowser:LabelLanguage", "@AOTBrowser:LabelText", "@AOTBrowser:LabelStatus", "@AOTBrowser:LabelId"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        if (CLRInterop::isNull(_aotObject))
+        {
+            return;
+        }
+
+        System.Object metadataObject = _aotObject;
+
+        this.addProperty(metadataObject, 'Label', 'Label');
+        this.addProperty(metadataObject, 'HelpText', 'HelpText');
+        this.addProperty(metadataObject, 'DeveloperDocumentation', 'DeveloperDocumentation');
+
+        // Forms keep their caption on the design node.
+        System.Reflection.PropertyInfo designProperty = metadataObject.GetType().GetProperty('Design');
+        if (!CLRInterop::isNull(designProperty))
+        {
+            System.Object design = designProperty.GetValue(metadataObject);
+            if (!CLRInterop::isNull(design))
+            {
+                this.addProperty(design, 'Caption', 'Design.Caption');
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addProperty</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds one line per label language for a label property, or one line when the value is not a label.
+    /// </summary>
+    /// <param name = "_object">The metadata object.</param>
+    /// <param name = "_propertyName">The property name.</param>
+    /// <param name = "_displayName">The name shown in the panel.</param>
+    private void addProperty(System.Object _object, str _propertyName, str _displayName)
+    {
+        System.Reflection.PropertyInfo property = _object.GetType().GetProperty(_propertyName);
+        if (CLRInterop::isNull(property))
+        {
+            return;
+        }
+
+        System.Object value = property.GetValue(_object);
+        if (CLRInterop::isNull(value))
+        {
+            return;
+        }
+
+        str labelId = value.ToString();
+        if (!labelId)
+        {
+            return;
+        }
+
+        if (!SysLabel::isLabelId(labelId))
+        {
+            this.addLine(_displayName, '', labelId, "@AOTBrowser:LabelNotALabel", '');
+            return;
+        }
+
+        LanguageTable language;
+
+        while select LanguageId from language
+            order by LanguageId
+            where language.LabelFile == NoYes::Yes
+        {
+            str text = SysLabel::labelId2String(labelId, language.LanguageId);
+            boolean missing = !text || text == labelId;
+
+            this.addLine(_displayName, language.LanguageId, missing ? '' : text, missing ? "@AOTBrowser:LabelMissing" : '', labelId);
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>
