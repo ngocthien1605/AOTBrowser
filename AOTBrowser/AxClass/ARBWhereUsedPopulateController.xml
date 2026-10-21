@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBWhereUsedPopulateController</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Runs <c>ARBWhereUsedPopulateService</c>; asynchronous by default because it reads the metadata of
+/// all tables, EDTs, views, data entities, queries and forms.
+/// </summary>
+class ARBWhereUsedPopulateController extends SysOperationServiceController
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>new</Name>
+				<Source><![CDATA[
+    protected void new(IdentifierName _className = '', IdentifierName _methodName = '', SysOperationExecutionMode _executionMode = SysOperationExecutionMode::ReliableAsynchronous)
+    {
+        super(classStr(ARBWhereUsedPopulateService), methodStr(ARBWhereUsedPopulateService, populateWhereUsed), _executionMode);
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>construct</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Creates a new controller.
+    /// </summary>
+    /// <returns>A new <c>ARBWhereUsedPopulateController</c>.</returns>
+    public static ARBWhereUsedPopulateController construct()
+    {
+        return new ARBWhereUsedPopulateController();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>main</Name>
+				<Source><![CDATA[
+    public static void main(Args _args)
+    {
+        ARBWhereUsedPopulateController controller = ARBWhereUsedPopulateController::construct();
+
+        controller.startOperation();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>caption</Name>
+				<Source><![CDATA[
+    public ClassDescription caption()
+    {
+        return "@AOTBrowser:PopulateWhereUsed";
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>parmDialogCaption</Name>
+				<Source><![CDATA[
+    public LabelType parmDialogCaption(LabelType _dialogCaption = dialogCaption)
+    {
+        // Caption is always overridden to ensure a consistent batch job description
+        return "@AOTBrowser:PopulateWhereUsed";
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

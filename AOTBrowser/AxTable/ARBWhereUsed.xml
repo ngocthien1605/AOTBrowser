@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxTable xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBWhereUsed</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Index of metadata references between objects (which object uses which EDT, enum, table, view,
+/// data entity or query), filled by <c>ARBWhereUsedPopulateService</c>.
+/// </summary>
+public class ARBWhereUsed extends common
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>isPopulated</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Checks whether the where-used index has been filled.
+    /// </summary>
+    /// <returns>true if the index has rows; otherwise, false.</returns>
+    public static boolean isPopulated()
+    {
+        ARBWhereUsed whereUsed;
+
+        select firstonly RecId from whereUsed;
+
+        return whereUsed.RecId != 0;
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+	<DeveloperDocumentation>@AOTBrowser:WhereUsedDevDoc</DeveloperDocumentation>
+	<Label>@AOTBrowser:DetailPanelWhereUsed</Label>
+	<SubscriberAccessLevel>
+		<Read>Allow</Read>
+	</SubscriberAccessLevel>
+	<TitleField1>UsedName</TitleField1>
+	<TitleField2>UserName</TitleField2>
+	<ClusteredIndex>RecId</ClusteredIndex>
+	<SaveDataPerCompany>No</SaveDataPerCompany>
+	<DeleteActions />
+	<FieldGroups>
+		<AxTableFieldGroup>
+			<Name>AutoReport</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoLookup</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoIdentification</Name>
+			<AutoPopulate>Yes</AutoPopulate>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoSummary</Name>
+			<Fields />
+		</AxTableFieldGroup>
+		<AxTableFieldGroup>
+			<Name>AutoBrowse</Name>
+			<Fields />
+		</AxTableFieldGroup>
+	</FieldGroups>
+	<Fields>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>UsedType</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:WhereUsedUsedType</Label>
+			<EnumType>ARBAOTObjectType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>UsedName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:WhereUsedUsedName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>Kind</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:WhereUsedKind</Label>
+			<EnumType>ARBWhereUsedKind</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldEnum">
+			<Name>UserType</Name>
+			<AllowEdit>No</AllowEdit>
+			<Label>@AOTBrowser:WhereUsedUserType</Label>
+			<EnumType>ARBAOTObjectType</EnumType>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>UserName</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>TreeNodeName</ExtendedDataType>
+			<Label>@AOTBrowser:WhereUsedUserName</Label>
+		</AxTableField>
+		<AxTableField xmlns=""
+			i:type="AxTableFieldString">
+			<Name>Path</Name>
+			<AllowEdit>No</AllowEdit>
+			<ExtendedDataType>ARBAOTDetailValue</ExtendedDataType>
+			<Label>@AOTBrowser:WhereUsedPath</Label>
+		</AxTableField>
+	</Fields>
+	<FullTextIndexes />
+	<Indexes>
+		<AxTableIndex>
+			<Name>UsedIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>UsedName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>UsedType</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>Kind</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+		<AxTableIndex>
+			<Name>UserIdx</Name>
+			<AllowDuplicates>Yes</AllowDuplicates>
+			<Fields>
+				<AxTableIndexField>
+					<DataField>UserName</DataField>
+				</AxTableIndexField>
+				<AxTableIndexField>
+					<DataField>UserType</DataField>
+				</AxTableIndexField>
+			</Fields>
+		</AxTableIndex>
+	</Indexes>
+	<Mappings />
+	<Relations />
+	<StateMachines />
+</AxTable>

@@ -1,0 +1,513 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBWhereUsedPopulateService</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using ArbelaXpp = Arbela.Dynamics.Ax.Xpp;
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+
+/// <summary>
+/// Fills <c>ARBWhereUsed</c> with the metadata references between objects: EDTs and enums used by table
+/// fields (including table extensions) and by other EDTs, tables used by relations, inheritance, EDT
+/// reference tables and by the data sources of forms, queries, views and data entities.
+/// </summary>
+class ARBWhereUsedPopulateService extends SysOperationServiceBase
+{
+    const int MaxDepth = 50;
+
+    ARBWhereUsed      whereUsed;
+    RecordInsertList  insertList;
+    ARBAOTPopulateLog log;
+    Map               dataSourceTypes;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>populateWhereUsed</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Rebuilds the where-used index.
+    /// </summary>
+    public void populateWhereUsed()
+    {
+        insertList      = new RecordInsertList(tableNum(ARBWhereUsed));
+        log             = ARBAOTPopulateLog::construct();
+        dataSourceTypes = new Map(Types::String, Types::Enum);
+
+        // The delete runs in its own transaction. Objects are processed outside a transaction so that a
+        // failing object can be caught, logged and skipped instead of rolling back the whole run.
+        ttsbegin;
+        delete_from whereUsed;
+        ttscommit;
+
+        this.processTables();
+        this.flush();
+        this.processEdts();
+        this.flush();
+        this.processViews();
+        this.processDataEntities();
+        this.flush();
+        this.processQueries();
+        this.flush();
+        this.processForms();
+        this.flush();
+
+        log.summary();
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>flush</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Writes the collected rows to reduce memory usage.
+    /// </summary>
+    private void flush()
+    {
+        insertList.insertDatabase();
+        insertList = new RecordInsertList(tableNum(ARBWhereUsed));
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processTables</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Fields, relations and inheritance of tables and their extensions.
+    /// </summary>
+    private void processTables()
+    {
+        var tablesEnum = Xpp.MetadataSupport::GetDataModelElements(true, false, false, false, false).GetEnumerator();
+        while (tablesEnum.MoveNext())
+        {
+            str tableName = tablesEnum.Current;
+            try
+            {
+                AxTable table = Xpp.MetadataSupport::GetTable(tableName);
+                if (table == null)
+                {
+                    continue;
+                }
+
+                if (table.Extends)
+                {
+                    this.addRow(ARBAOTObjectType::Table, table.Extends, ARBWhereUsedKind::Extends, ARBAOTObjectType::Table, table.Name, '');
+                }
+
+                this.addTableFields(table.Fields, table.Name, '');
+                this.addTableRelations(table.Relations, table.Name, '');
+
+                var extensionsEnum = Xpp.MetadataSupport::GetTableExtensionsForTable(table.Name).GetEnumerator();
+                while (extensionsEnum.MoveNext())
+                {
+                    AxTableExtension tableExtension = extensionsEnum.Current;
+                    this.addTableFields(tableExtension.Fields, table.Name, tableExtension.Name + '/');
+                    this.addTableRelations(tableExtension.Relations, table.Name, tableExtension.Name + '/');
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Table), tableName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Table), tableName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addTableFields</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds the EDT and enum of each table field.
+    /// </summary>
+    private void addTableFields(System.Collections.IEnumerable _fields, str _tableName, str _pathPrefix)
+    {
+        if (CLRInterop::isNull(_fields))
+        {
+            return;
+        }
+
+        var fieldsEnum = _fields.GetEnumerator();
+        while (fieldsEnum.MoveNext())
+        {
+            AxTableField field = fieldsEnum.Current;
+            if (field.ExtendedDataType)
+            {
+                this.addRow(ARBAOTObjectType::ExtendedDataType, field.ExtendedDataType, ARBWhereUsedKind::Field, ARBAOTObjectType::Table, _tableName, _pathPrefix + field.Name);
+            }
+
+            AxTableFieldEnum enumField = field as AxTableFieldEnum;
+            if (enumField != null && enumField.EnumType)
+            {
+                this.addRow(ARBAOTObjectType::BaseEnum, enumField.EnumType, ARBWhereUsedKind::Field, ARBAOTObjectType::Table, _tableName, _pathPrefix + field.Name);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addTableRelations</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds the related table of each table relation.
+    /// </summary>
+    private void addTableRelations(System.Collections.IEnumerable _relations, str _tableName, str _pathPrefix)
+    {
+        if (CLRInterop::isNull(_relations))
+        {
+            return;
+        }
+
+        var relationsEnum = _relations.GetEnumerator();
+        while (relationsEnum.MoveNext())
+        {
+            AxTableRelation relation = relationsEnum.Current;
+            if (relation.RelatedTable)
+            {
+                this.addRow(this.dataSourceType(relation.RelatedTable), relation.RelatedTable, ARBWhereUsedKind::Relation, ARBAOTObjectType::Table, _tableName, _pathPrefix + relation.Name);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processEdts</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// EDT inheritance, enum types and reference tables of EDTs.
+    /// </summary>
+    private void processEdts()
+    {
+        var edtsEnum = Xpp.MetadataSupport::EdtNames();
+        while (edtsEnum.MoveNext())
+        {
+            str edtName = edtsEnum.Current;
+            try
+            {
+                AxEdt edt = Xpp.MetadataSupport::GetEdt(edtName);
+                if (edt == null)
+                {
+                    continue;
+                }
+
+                if (edt.Extends)
+                {
+                    this.addRow(ARBAOTObjectType::ExtendedDataType, edt.Extends, ARBWhereUsedKind::Extends, ARBAOTObjectType::ExtendedDataType, edt.Name, '');
+                }
+
+                AxEdtEnum edtEnum = edt as AxEdtEnum;
+                if (edtEnum != null && edtEnum.EnumType)
+                {
+                    this.addRow(ARBAOTObjectType::BaseEnum, edtEnum.EnumType, ARBWhereUsedKind::EnumType, ARBAOTObjectType::ExtendedDataType, edt.Name, '');
+                }
+
+                if (edt.ReferenceTable)
+                {
+                    this.addRow(this.dataSourceType(edt.ReferenceTable), edt.ReferenceTable, ARBWhereUsedKind::ReferenceTable, ARBAOTObjectType::ExtendedDataType, edt.Name, '');
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::ExtendedDataType), edtName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::ExtendedDataType), edtName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processViews</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Data sources and query of views.
+    /// </summary>
+    private void processViews()
+    {
+        var viewsEnum = Xpp.MetadataSupport::GetDataModelElements(false, true, false, false, false).GetEnumerator();
+        while (viewsEnum.MoveNext())
+        {
+            str viewName = viewsEnum.Current;
+            try
+            {
+                AxView view = Xpp.MetadataSupport::GetView(viewName);
+                if (view == null)
+                {
+                    continue;
+                }
+
+                if (view.Query)
+                {
+                    this.addRow(ARBAOTObjectType::Query, view.Query, ARBWhereUsedKind::Query, ARBAOTObjectType::View, view.Name, '');
+                }
+                else if (view.ViewMetadata != null)
+                {
+                    this.addDataSources(view.ViewMetadata.DataSources, ARBAOTObjectType::View, view.Name, '', 0);
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::View), viewName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::View), viewName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processDataEntities</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Data sources of data entities.
+    /// </summary>
+    private void processDataEntities()
+    {
+        var entitiesEnum = Xpp.MetadataSupport::GetDataModelElements(false, false, true, false, false).GetEnumerator();
+        while (entitiesEnum.MoveNext())
+        {
+            str entityName = entitiesEnum.Current;
+            try
+            {
+                AxDataEntityView entity = Xpp.MetadataSupport::GetDataEntityView(entityName);
+                if (entity != null && entity.ViewMetadata != null)
+                {
+                    this.addDataSources(entity.ViewMetadata.DataSources, ARBAOTObjectType::DataEntity, entity.Name, '', 0);
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::DataEntity), entityName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::DataEntity), entityName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processQueries</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Data sources of queries and their extensions.
+    /// </summary>
+    private void processQueries()
+    {
+        var queriesEnum = Xpp.MetadataSupport::QueryNames();
+        while (queriesEnum.MoveNext())
+        {
+            str queryName = queriesEnum.Current;
+            try
+            {
+                AxQuerySimple query = Xpp.MetadataSupport::GetQuery(queryName) as AxQuerySimple;
+                if (query == null)
+                {
+                    continue;
+                }
+
+                this.addDataSources(query.DataSources, ARBAOTObjectType::Query, query.Name, '', 0);
+
+                var extensionsEnum = ArbelaXpp.MetadataSupport::GetQueryExtensionsForQuery(query.Name).GetEnumerator();
+                while (extensionsEnum.MoveNext())
+                {
+                    AxQuerySimpleExtension queryExtension = extensionsEnum.Current;
+                    this.addDataSources(queryExtension.DataSources, ARBAOTObjectType::Query, query.Name, queryExtension.Name + '/', 0);
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Query), queryName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Query), queryName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>processForms</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Data sources of forms and their extensions.
+    /// </summary>
+    private void processForms()
+    {
+        var formsEnum = Xpp.MetadataSupport::FormNames();
+        while (formsEnum.MoveNext())
+        {
+            str formName = formsEnum.Current;
+            try
+            {
+                AxForm form = Xpp.MetadataSupport::GetForm(formName);
+                if (form == null)
+                {
+                    continue;
+                }
+
+                this.addDataSources(form.DataSources, ARBAOTObjectType::Form, form.Name, '', 0);
+
+                var extensionsEnum = ArbelaXpp.MetadataSupport::GetFormExtensionsForForm(form.Name).GetEnumerator();
+                while (extensionsEnum.MoveNext())
+                {
+                    AxFormExtension formExtension = extensionsEnum.Current;
+                    this.addDataSources(formExtension.DataSources, ARBAOTObjectType::Form, form.Name, formExtension.Name + '/', 0);
+                }
+            }
+            catch (Exception::CLRError)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Form), formName);
+            }
+            catch (Exception::Error)
+            {
+                log.skip(enum2Str(ARBAOTObjectType::Form), formName);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addDataSources</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Adds the table of each data source, walking joined, referenced and derived data sources.
+    /// Handles the same data source types as <c>ARBAOTBrowserHelper::getTableNameFromDatasource</c>.
+    /// </summary>
+    private void addDataSources(System.Collections.IEnumerable _dataSources, ARBAOTObjectType _userType, str _userName, str _pathPrefix, int _depth)
+    {
+        if (_depth >= MaxDepth || CLRInterop::isNull(_dataSources))
+        {
+            return;
+        }
+
+        var dataSourcesEnum = _dataSources.GetEnumerator();
+        while (dataSourcesEnum.MoveNext())
+        {
+            if (dataSourcesEnum.Current is AxFormDataSourceRoot)
+            {
+                AxFormDataSourceRoot root = dataSourcesEnum.Current;
+                this.addDataSource(root.Table, _userType, _userName, _pathPrefix + root.Name);
+                this.addDataSources(root.ReferencedDataSources, _userType, _userName, _pathPrefix, _depth + 1);
+                this.addDataSources(root.DerivedDataSources, _userType, _userName, _pathPrefix, _depth + 1);
+            }
+            else if (dataSourcesEnum.Current is AxFormDataSourceDerived)
+            {
+                AxFormDataSourceDerived derived = dataSourcesEnum.Current;
+                this.addDataSource(derived.Table, _userType, _userName, _pathPrefix + derived.Name);
+                this.addDataSources(derived.ReferencedDataSources, _userType, _userName, _pathPrefix, _depth + 1);
+                this.addDataSources(derived.DerivedDataSources, _userType, _userName, _pathPrefix, _depth + 1);
+            }
+            else if (dataSourcesEnum.Current is AxFormDataSourceReferenced)
+            {
+                AxFormDataSourceReferenced referenced = dataSourcesEnum.Current;
+                this.addDataSource(referenced.Table, _userType, _userName, _pathPrefix + referenced.Name);
+                this.addDataSources(referenced.ReferencedDataSources, _userType, _userName, _pathPrefix, _depth + 1);
+            }
+            else if (dataSourcesEnum.Current is AxQuerySimpleDataSource)
+            {
+                AxQuerySimpleDataSource querySource = dataSourcesEnum.Current;
+                this.addDataSource(querySource.Table, _userType, _userName, _pathPrefix + querySource.Name);
+                this.addDataSources(querySource.DataSources, _userType, _userName, _pathPrefix + querySource.Name + '/', _depth + 1);
+                this.addDataSources(querySource.DerivedDataSources, _userType, _userName, _pathPrefix + querySource.Name + '/', _depth + 1);
+            }
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addDataSource</Name>
+				<Source><![CDATA[
+    private void addDataSource(str _tableName, ARBAOTObjectType _userType, str _userName, str _path)
+    {
+        if (_tableName)
+        {
+            this.addRow(this.dataSourceType(_tableName), _tableName, ARBWhereUsedKind::DataSource, _userType, _userName, _path);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>dataSourceType</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Resolves whether a data source table is a data entity, a view or a table (cached).
+    /// </summary>
+    private ARBAOTObjectType dataSourceType(str _name)
+    {
+        if (dataSourceTypes.exists(_name))
+        {
+            return dataSourceTypes.lookup(_name);
+        }
+
+        ARBAOTObjectType objectType = ARBAOTObjectType::Table;
+        try
+        {
+            if (Xpp.MetadataSupport::GetDataEntityView(_name) != null)
+            {
+                objectType = ARBAOTObjectType::DataEntity;
+            }
+            else if (Xpp.MetadataSupport::GetView(_name) != null)
+            {
+                objectType = ARBAOTObjectType::View;
+            }
+        }
+        catch (Exception::CLRError)
+        {
+            objectType = ARBAOTObjectType::Table;
+        }
+
+        dataSourceTypes.insert(_name, objectType);
+        return objectType;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>addRow</Name>
+				<Source><![CDATA[
+    private void addRow(
+        ARBAOTObjectType _usedType,
+        str              _usedName,
+        ARBWhereUsedKind _kind,
+        ARBAOTObjectType _userType,
+        str              _userName,
+        str              _path)
+    {
+        whereUsed.clear();
+        whereUsed.UsedType = _usedType;
+        whereUsed.UsedName = _usedName;
+        whereUsed.Kind     = _kind;
+        whereUsed.UserType = _userType;
+        whereUsed.UserName = _userName;
+        whereUsed.Path     = _path;
+        insertList.add(whereUsed);
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

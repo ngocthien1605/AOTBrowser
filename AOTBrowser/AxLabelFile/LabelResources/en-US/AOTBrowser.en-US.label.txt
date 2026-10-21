@@ -292,3 +292,49 @@ ViewPermissions=View permissions
  ;ARB_AOTBrowser
 ViewPermissionsHelp=Opens the standard security diagnostics for the selected menu item
  ;ARB_AOTBrowser
+DetailTooManyLines=Only the first %1 lines are shown.
+ ;ARB_AOTBrowser
+HierarchyAttributes=Attributes
+ ;ARB_AOTBrowser
+HierarchyDerived=Extended by
+ ;ARB_AOTBrowser
+HierarchyImplementedBy=Implemented by
+ ;ARB_AOTBrowser
+HierarchyInterfaces=Interfaces
+ ;ARB_AOTBrowser
+HierarchyParents=Extends
+ ;ARB_AOTBrowser
+HierarchySubclasses=Subclasses
+ ;ARB_AOTBrowser
+PopulateWhereUsed=Populate where used
+ ;ARB_AOTBrowser
+WhereUsedDevDoc=Holds the metadata references between AOT objects for the where used panel
+ ;ARB_AOTBrowser
+WhereUsedKind=Usage
+ ;ARB_AOTBrowser
+WhereUsedKindDataSource=Data source
+ ;ARB_AOTBrowser
+WhereUsedKindEnumType=Enum type
+ ;ARB_AOTBrowser
+WhereUsedKindExtends=Extends
+ ;ARB_AOTBrowser
+WhereUsedKindField=Field
+ ;ARB_AOTBrowser
+WhereUsedKindQuery=Query
+ ;ARB_AOTBrowser
+WhereUsedKindReferenceTable=Reference table
+ ;ARB_AOTBrowser
+WhereUsedKindRelation=Relation
+ ;ARB_AOTBrowser
+WhereUsedNotPopulated=The where used index is empty. Run Populate where used first.
+ ;ARB_AOTBrowser
+WhereUsedPath=Path
+ ;ARB_AOTBrowser
+WhereUsedUsedName=Used object
+ ;ARB_AOTBrowser
+WhereUsedUsedType=Used object type
+ ;ARB_AOTBrowser
+WhereUsedUserName=Used by
+ ;ARB_AOTBrowser
+WhereUsedUserType=Used by type
+ ;ARB_AOTBrowser

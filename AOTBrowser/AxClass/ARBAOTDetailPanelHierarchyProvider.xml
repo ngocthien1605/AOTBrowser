@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelHierarchyProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+using Xpp = Microsoft.Dynamics.Ax.Xpp;
+using Microsoft.Dynamics.AX.Metadata.MetaModel;
+
+/// <summary>
+/// "Hierarchy" panel. Classes: parent classes, implemented interfaces, attributes (including those of
+/// extension classes) and direct subclasses or implementations. Tables and EDTs: the objects they extend
+/// and the objects that extend them (from the where-used index).
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::Hierarchy)]
+class ARBAOTDetailPanelHierarchyProvider extends ARBAOTDetailPanelProvider
+{
+    const int MaxLines = 2000;
+    const int MaxDepth = 50;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Class:
+            case ARBAOTObjectType::Table:
+            case ARBAOTObjectType::ExtendedDataType:
+                return true;
+        }
+
+        return false;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:DetailSection", "@AOTBrowser:DetailName"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::Class:
+                this.classHierarchy(_objectName);
+                break;
+
+            case ARBAOTObjectType::Table:
+                this.tableParents(_objectName);
+                this.derivedObjects(ARBAOTObjectType::Table, _objectName);
+                break;
+
+            case ARBAOTObjectType::ExtendedDataType:
+                this.edtParents(_objectName);
+                this.derivedObjects(ARBAOTObjectType::ExtendedDataType, _objectName);
+                break;
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>classHierarchy</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// Parents, interfaces, attributes and direct subclasses or implementations of a class.
+    /// </summary>
+    private void classHierarchy(str _className)
+    {
+        ClassId classId = className2Id(_className);
+        if (!classId)
+        {
+            return;
+        }
+
+        SysDictClass dictClass = new SysDictClass(classId);
+
+        ClassId parentId = dictClass.extend();
+        for (int depth = 1; parentId && depth <= MaxDepth; depth++)
+        {
+            str parentName = classId2Name(parentId);
+            this.addLine("@AOTBrowser:HierarchyParents", parentName, '', '', '', '', ARBAOTObjectType::Class, parentName);
+            parentId = new DictClass(parentId).extend();
+        }
+
+        for (int i = 1; i <= dictClass.implementsCnt(); i++)
+        {
+            str interfaceName = classId2Name(dictClass.implements(i));
+            this.addLine("@AOTBrowser:HierarchyInterfaces", interfaceName, '', '', '', '', ARBAOTObjectType::Class, interfaceName);
+        }
+
+        Array attributes = dictClass.getAllAttributes();
+        for (int i = 1; attributes && i <= attributes.lastIndex(); i++)
+        {
+            Object attribute = attributes.value(i);
+            if (attribute)
+            {
+                str attributeName = classId2Name(classIdGet(attribute));
+                this.addLine("@AOTBrowser:HierarchyAttributes", attributeName, '', '', '', '', ARBAOTObjectType::Class, attributeName);
+            }
+        }
+
+        boolean isInterface = dictClass.isInterface();
+        List children = isInterface ? dictClass.implementedBy(false) : dictClass.extendedBy(false);
+        str section = isInterface ? "@AOTBrowser:HierarchyImplementedBy" : "@AOTBrowser:HierarchySubclasses";
+        int shown;
+
+        ListEnumerator childEnum = children.getEnumerator();
+        while (childEnum.moveNext())
+        {
+            ClassId childId = childEnum.current();
+            if (childId == classId)
+            {
+                continue;
+            }
+
+            shown++;
+            if (shown > MaxLines)
+            {
+                this.addLine('', strFmt("@AOTBrowser:DetailTooManyLines", MaxLines));
+                break;
+            }
+
+            str childName = classId2Name(childId);
+            this.addLine(section, childName, '', '', '', '', ARBAOTObjectType::Class, childName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>tableParents</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The tables a table extends through table inheritance.
+    /// </summary>
+    private void tableParents(str _tableName)
+    {
+        AxTable table = Xpp.MetadataSupport::GetTable(_tableName);
+        for (int depth = 1; table != null && table.Extends && depth <= MaxDepth; depth++)
+        {
+            str parentName = table.Extends;
+            this.addLine("@AOTBrowser:HierarchyParents", parentName, '', '', '', '', ARBAOTObjectType::Table, parentName);
+            table = Xpp.MetadataSupport::GetTable(parentName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>edtParents</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The EDTs an EDT extends.
+    /// </summary>
+    private void edtParents(str _edtName)
+    {
+        AxEdt edt = Xpp.MetadataSupport::GetEdt(_edtName);
+        for (int depth = 1; edt != null && edt.Extends && depth <= MaxDepth; depth++)
+        {
+            str parentName = edt.Extends;
+            this.addLine("@AOTBrowser:HierarchyParents", parentName, '', '', '', '', ARBAOTObjectType::ExtendedDataType, parentName);
+            edt = Xpp.MetadataSupport::GetEdt(parentName);
+        }
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>derivedObjects</Name>
+				<Source><![CDATA[
+    /// <summary>
+    /// The tables or EDTs that directly extend the object, from the where-used index.
+    /// </summary>
+    private void derivedObjects(ARBAOTObjectType _objectType, str _objectName)
+    {
+        if (!ARBWhereUsed::isPopulated())
+        {
+            this.addLine("@AOTBrowser:HierarchyDerived", "@AOTBrowser:WhereUsedNotPopulated");
+            return;
+        }
+
+        ARBWhereUsed whereUsed;
+        int          shown;
+
+        while select UserName, UserType from whereUsed
+            order by UserName
+            where whereUsed.UsedName == _objectName
+               && whereUsed.UsedType == _objectType
+               && whereUsed.Kind     == ARBWhereUsedKind::Extends
+        {
+            shown++;
+            if (shown > MaxLines)
+            {
+                this.addLine('', strFmt("@AOTBrowser:DetailTooManyLines", MaxLines));
+                break;
+            }
+
+            this.addLine("@AOTBrowser:HierarchyDerived", whereUsed.UserName, '', '', '', '', whereUsed.UserType, whereUsed.UserName);
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>

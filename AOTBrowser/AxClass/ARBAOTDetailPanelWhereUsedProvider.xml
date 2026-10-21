@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ARBAOTDetailPanelWhereUsedProvider</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// "Where used" panel: the objects whose metadata refers to the selected EDT, enum, table, view, data
+/// entity or query. Reads <c>ARBWhereUsed</c>, filled by <c>ARBWhereUsedPopulateService</c>.
+/// </summary>
+[ARBAOTDetailPanelAttribute(ARBAOTDetailPanel::WhereUsed)]
+class ARBAOTDetailPanelWhereUsedProvider extends ARBAOTDetailPanelProvider
+{
+    const int MaxLines = 2000;
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>supports</Name>
+				<Source><![CDATA[
+    public boolean supports(ARBAOTObjectType _objectType)
+    {
+        switch (_objectType)
+        {
+            case ARBAOTObjectType::ExtendedDataType:
+            case ARBAOTObjectType::BaseEnum:
+            case ARBAOTObjectType::Table:
+            case ARBAOTObjectType::View:
+            case ARBAOTObjectType::DataEntity:
+            case ARBAOTObjectType::Query:
+                return true;
+        }
+
+        return false;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>columnLabels</Name>
+				<Source><![CDATA[
+    public container columnLabels()
+    {
+        return ["@AOTBrowser:WhereUsedKind", "@AOTBrowser:WhereUsedUserName", "@AOTBrowser:WhereUsedUserType", "@AOTBrowser:WhereUsedPath"];
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>populate</Name>
+				<Source><![CDATA[
+    protected void populate(ARBAOTObjectType _objectType, TreeNodeName _objectName, anytype _aotObject)
+    {
+        if (!ARBWhereUsed::isPopulated())
+        {
+            this.addLine('', "@AOTBrowser:WhereUsedNotPopulated");
+            return;
+        }
+
+        ARBWhereUsed whereUsed;
+        int          shown;
+
+        while select whereUsed
+            order by Kind, UserType, UserName, Path
+            where whereUsed.UsedName == _objectName
+               && whereUsed.UsedType == _objectType
+        {
+            shown++;
+            if (shown > MaxLines)
+            {
+                this.addLine('', strFmt("@AOTBrowser:DetailTooManyLines", MaxLines));
+                break;
+            }
+
+            this.addLine(enum2Str(whereUsed.Kind), whereUsed.UserName, enum2Str(whereUsed.UserType), whereUsed.Path, '', '', whereUsed.UserType, whereUsed.UserName);
+        }
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>
