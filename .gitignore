@@ -1,0 +1,11 @@
+# Track only the model descriptor, object files and referenced DLLs; build output stays out
+/*
+!/.gitignore
+!/Descriptor/
+!/AOTBrowser/
+!/bin/
+/Descriptor/*
+!/Descriptor/AOTBrowser.xml
+/bin/*
+!/bin/Arbela.Dynamics.AX.Xpp.Support.dll
+!/bin/PygmentSharp.Core.dll
